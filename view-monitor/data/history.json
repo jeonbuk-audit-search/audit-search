@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "interval_minutes": 30,
+  "timezone": "Asia/Seoul",
+  "source": "https://www.jbe.go.kr/board/list.jbe",
+  "items": [
+    {
+      "id": "1200294",
+      "name": "2026 학교회계 운영지침·감사사례",
+      "url": "https://www.jbe.go.kr/board/view.jbe?boardId=BBS_0000683&menuCd=DOM_000000106011002002&dataSid=1200294"
+    },
+    {
+      "id": "1204144",
+      "name": "감사ON",
+      "url": "https://www.jbe.go.kr/board/view.jbe?boardId=BBS_0000683&menuCd=DOM_000000106011002002&dataSid=1204144"
+    },
+    {
+      "id": "1210880",
+      "name": "학교 500만원 이상 계약실무 길잡이",
+      "url": "https://www.jbe.go.kr/board/view.jbe?boardId=BBS_0000683&menuCd=DOM_000000106011002002&dataSid=1210880"
+    },
+    {
+      "id": "1212154",
+      "name": "늙크크 AI 공작소",
+      "url": "https://www.jbe.go.kr/board/view.jbe?boardId=BBS_0000683&menuCd=DOM_000000106011002002&dataSid=1212154"
+    }
+  ],
+  "records": [],
+  "baseline": {
+    "date": "2026-11-14",
+    "counts": {
+      "1200294": 699,
+      "1204144": 549,
+      "1210880": 492,
+      "1212154": 101
+    },
+    "label": "공식 게시판 목록의 이전 참고값. 자동 수집 성공 이력 아님."
+  }
+}
