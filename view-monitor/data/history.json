@@ -25,7 +25,19 @@
       "url": "https://www.jbe.go.kr/board/view.jbe?boardId=BBS_0000683&menuCd=DOM_000000106011002002&dataSid=1212154"
     }
   ],
-  "records": [],
+  "records": [
+    {
+      "timestamp": "2026-11-14T12:54:37+09:00",
+      "counts": {
+        "1200294": 704,
+        "1204144": 561,
+        "1210880": 503,
+        "1212154": 103
+      },
+      "status": "ok",
+      "errors": []
+    }
+  ],
   "baseline": {
     "date": "2026-11-14",
     "counts": {
