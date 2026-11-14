@@ -41,10 +41,55 @@ let history={records:[]};
 const when=s=>s?new Date(s).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'}):'—';
 const delta=n=>n===null?'—':(n>0?'+':'')+fmt(n)+'회';
 function downloadHistory(){const b=new Blob([JSON.stringify(history,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='조회수이력.json';a.click();URL.revokeObjectURL(a.href)}
-async function load(){try{let res=await fetch(ROOT+'history.json?t='+Date.now(),{cache:'no-store'});if(!res.ok)throw Error('기록 파일 HTTP '+res.status);let obj=await res.json();if(!Array.isArray(obj.records))throw Error('이력 구조 오류');history=obj;render();$('errmsg').textContent='';}catch(e){$('state').textContent='기록 연결 실패';$('errmsg').textContent='GitHub 기록을 불러오지 못했습니다: '+e.message;}}
+let lastApiAttempt=0;
+const apiURL='https://api.github.com/repos/jeonbuk-audit-search/audit-search/contents/view-monitor/data/history.json';
+function recentTime(data){return Math.max(0,...(data?.records||[]).map(r=>new Date(r.timestamp).getTime()).filter(Number.isFinite))}
+async function load(){
+ const t=Date.now();
+ const endpoints=[
+  ['공개 대시보드', './data/history.json?reload='+t],
+  ['GitHub 원본','https://raw.githubusercontent.com/jeonbuk-audit-search/audit-search/main/view-monitor/data/history.json?reload='+t]
+ ];
+ const candidates=[];
+ const errors=[];
+ await Promise.all(endpoints.map(async ([label,url])=>{
+  const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),12000);
+  try{
+   const r=await fetch(url,{cache:'no-store',signal:ctrl.signal});
+   if(!r.ok)throw Error('HTTP '+r.status);
+   const data=await r.json();
+   if(!Array.isArray(data.records))throw Error('기록 형식 오류');
+   candidates.push({label,data});
+  }catch(e){errors.push(label+': '+e.message)}finally{clearTimeout(timer)}
+ }));
+ let best=candidates.sort((a,b)=>recentTime(b.data)-recentTime(a.data))[0];
+ const isOutdated=!best || t-recentTime(best.data)>15*60000;
+ if(isOutdated&&t-lastApiAttempt>300000){
+  lastApiAttempt=t;
+  try{
+   const r=await fetch(apiURL+'?ref=main&reload='+t,{cache:'no-store',headers:{Accept:'application/vnd.github+json'}});
+   if(!r.ok)throw Error('HTTP '+r.status);
+   const payload=await r.json();
+   const binary=atob((payload.content||'').replace(/\\s/g,''));
+   const bytes=Uint8Array.from(binary,c=>c.charCodeAt(0));
+   const data=JSON.parse(new TextDecoder().decode(bytes));
+   if(!Array.isArray(data.records))throw Error('기록 형식 오류');
+   if(!best||recentTime(data)>recentTime(best.data))best={label:'GitHub API 최신 기록',data};
+  }catch(e){errors.push('GitHub API: '+e.message)}
+ }
+ if(best){
+  if(recentTime(best.data)>=recentTime(history))history=best.data;
+  render();
+  $('errmsg').textContent=errors.length?'일부 기록 경로에 문제가 있습니다. '+errors.join(' / '):'';
+ }else{
+  $('state').textContent='기록 연결 실패';
+  $('errmsg').textContent='GitHub 기록을 불러오지 못했습니다. '+errors.join(' / ');
+ }
+}
 function render(){let all=history.records,good=all.filter(x=>sum(x)!==null).sort((a,b)=>a.timestamp.localeCompare(b.timestamp));let last=good.at(-1),prev=good.at(-2),ref=!last?{counts:history.baseline?.counts}:null,disp=last||ref;let age=last?Math.round((Date.now()-new Date(last.timestamp).getTime())/60000):null;let stale=age!==null&&age>45;let warning=$('stale');warning.hidden=!stale;warning.innerHTML=stale?'마지막 조회가 '+age+'분 전입니다. 예약 수집이 지연됐을 수 있습니다. <a href="https://github.com/jeonbuk-audit-search/audit-search/actions/workflows/view-monitor.yml" target="_blank" rel="noopener">지금 GitHub에서 수집 실행</a> 후 다시 불러오세요.':'';
 $('total').textContent=fmt(sum(disp))+'회';$('state').textContent=!all.length?'자동 수집 시작 전':all.at(-1)?.status==='ok'?stale?'수집 지연 '+age+'분':'최근 수집 정상':'최근 수집 실패/일부 실패';
-$('checked').textContent=last?'마지막 확인: '+when(last.timestamp)+(last.source==='manual_verified_public_listing'?' (공개 목록 직접 확인)':' (자동 수집)'):'2026-11-14 확인한 초기 참고값 (실시간 갱신 아님)';
+const sourceLabels={schedule:'정기 자동 실행',workflow_dispatch:'수동 실행',push:'코드 변경 후 실행',manual_verified_public_listing:'게시판 직접 확인'}; 
+$('checked').textContent=last?'마지막 확인: '+when(last.timestamp)+' ('+(sourceLabels[last.source]||'수집 방식 미표시')+')':'2026-11-14 확인한 초기 참고값 (실시간 갱신 아님)';
 $('attempts').textContent=fmt(all.length)+'회';$('change').textContent=last&&prev?delta(sum(last)-sum(prev)):'—';
 let first=last&&good.find(x=>x.timestamp.slice(0,10)===last.timestamp.slice(0,10));$('today').textContent=first&&last?delta(sum(last)-sum(first)):'—';
 $('cards').innerHTML=IDs.map((id,i)=>{let num=disp?.counts?.[id],before=prev?.counts?.[id];let d=Number.isInteger(num)&&Number.isInteger(before)?num-before:null;return '<article class="card"><small>PROGRAM '+String(i+1).padStart(2,'0')+'</small><h3>'+NAMES[i]+'</h3><strong>'+fmt(num)+'</strong><small>회</small><span class="delta">'+(d===null?'증가량 확인 대기':delta(d))+'</span><a href="https://www.jbe.go.kr/board/view.jbe?boardId=BBS_0000683&menuCd=DOM_000000106011002002&dataSid='+id+'" target="_blank" rel="noopener">교육청 원본 보기 ↗</a></article>'}).join('');
