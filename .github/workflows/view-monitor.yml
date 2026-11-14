@@ -1,17 +1,22 @@
-name: 큰그릇실장 조회수 30분 자동 수집
+name: 큰그릇실장 조회수 30분 자동 수집 및 대시보드 배포
 on:
   schedule:
     - cron: '7,37 * * * *'
   workflow_dispatch:
 permissions:
   contents: write
+  pages: write
+  id-token: write
 concurrency:
   group: bigbowl-view-monitor
   cancel-in-progress: false
 jobs:
   collect:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -34,3 +39,17 @@ jobs:
             git pull --rebase origin main
             git push origin HEAD:main
           fi
+      - name: Prepare dashboard
+        run: |
+          mkdir -p view-monitor/site/data
+          cp view-monitor/data/history.json view-monitor/site/data/history.json
+          cp view-monitor/data/history.csv view-monitor/site/data/history.csv
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Upload dashboard
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: view-monitor/site
+      - name: Publish dashboard
+        id: deployment
+        uses: actions/deploy-pages@v4
