@@ -36,6 +36,18 @@
       },
       "status": "ok",
       "errors": []
+    },
+    {
+      "timestamp": "2026-11-14T14:08:20+09:00",
+      "counts": {
+        "1200294": 709,
+        "1204144": 567,
+        "1210880": 503,
+        "1212154": 109
+      },
+      "status": "ok",
+      "errors": [],
+      "source": "manual_verified_public_listing"
     }
   ],
   "baseline": {
