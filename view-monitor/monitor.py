@@ -86,6 +86,26 @@ def fetch(page):
     raise RuntimeError(f"목록 {page}쪽 HTTP 접속 실패: {last_error}")
 
 def main():
+    if os.environ.get("GITHUB_EVENT_NAME") == "schedule":
+        # GitHub cron can be delayed/dropped. Retry at 15-minute offsets, but
+        # record a fresh observation only after at least 25 minutes.
+        try:
+            previous = json.loads(HISTORY.read_text(encoding="utf-8"))
+            now = datetime.now(timezone.utc)
+            for prior in reversed(previous.get("records", [])):
+                if prior.get("status") != "ok":
+                    continue
+                at = datetime.fromisoformat(prior["timestamp"])
+                if at.tzinfo is None:
+                    at = at.replace(tzinfo=timezone(timedelta(hours=9)))
+                elapsed = (now - at.astimezone(timezone.utc)).total_seconds()
+                if 0 <= elapsed < 25 * 60:
+                    print("Recent successful observation", round(elapsed / 60, 1),
+                          "minutes ago; scheduled retry skipped.", flush=True)
+                    return 0
+                break
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            print("No valid history for cadence check:", exc, flush=True)
     values = {}
     errors = []
     for page in (1, 2, 3):
