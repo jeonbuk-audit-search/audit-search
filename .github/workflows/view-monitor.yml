@@ -32,19 +32,39 @@ jobs:
         with:
           python-version: '3.12'
       - name: Collect public board counts
+        continue-on-error: true
         run: |
           cd view-monitor
-          python monitor.py || true
-      - name: Commit historical observations
+          python monitor.py
+      - name: Commit historical observations safely
         run: |
+          set -euo pipefail
+          if git diff --quiet -- view-monitor/data/history.json; then
+            echo "No new observation to commit."
+            exit 0
+          fi
+          python -c 'import os,json,pathlib;p=pathlib.Path("view-monitor/data/history.json");o=json.loads(p.read_text(encoding="utf-8"))["records"][-1];pathlib.Path(os.environ["RUNNER_TEMP"],"observation.json").write_text(json.dumps(o,ensure_ascii=False),encoding="utf-8")'
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add view-monitor/data/history.json view-monitor/data/history.csv
-          if ! git diff --cached --quiet; then
-            git commit -m 'chore: collect education-board view counts [skip ci]'
-            git pull --rebase origin main
-            git push origin HEAD:main
-          fi
+          for attempt in 1 2 3 4 5; do
+            echo "Safe history merge attempt $attempt"
+            git fetch --no-tags origin main
+            git reset --hard origin/main
+            python view-monitor/merge_observation.py "$RUNNER_TEMP/observation.json"
+            git add view-monitor/data/history.json view-monitor/data/history.csv
+            if git diff --cached --quiet; then
+              echo "Observation already stored."
+              exit 0
+            fi
+            git commit -m "chore: merge education-board view observation [skip ci]"
+            if git push origin HEAD:main; then
+              echo "Observation merged and pushed."
+              exit 0
+            fi
+            sleep "$((attempt * 2))"
+          done
+          echo "Could not commit after five attempts" >&2
+          exit 1
       - name: Prepare dashboard
         run: |
           mkdir -p view-monitor/site/data
