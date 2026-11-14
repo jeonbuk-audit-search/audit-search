@@ -7,6 +7,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/view-monitor.yml'
+      - 'view-monitor/site/index.html'
 permissions:
   contents: write
   pages: write
