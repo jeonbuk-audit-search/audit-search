@@ -2,6 +2,7 @@
 """Read public listing view counts without opening detail pages."""
 import csv
 import io
+import os
 import json
 import re
 import sys
@@ -106,6 +107,7 @@ def main():
         "timestamp": datetime.now(timezone(timedelta(hours=9))).isoformat(timespec="seconds"),
         "counts": {x["id"]:values.get(x["id"]) for x in ITEMS},
         "status": "ok" if not missing else ("partial" if values else "error"),
+        "source": os.environ.get("GITHUB_EVENT_NAME", "manual_run"),
         "errors": errors
     }
     obj["records"].append(record)
