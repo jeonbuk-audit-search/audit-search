@@ -273,6 +273,18 @@
       "status": "ok",
       "source": "schedule",
       "errors": []
+    },
+    {
+      "timestamp": "2026-11-16T06:13:46+09:00",
+      "counts": {
+        "1200294": 755,
+        "1204144": 598,
+        "1210880": 553,
+        "1212154": 150
+      },
+      "status": "ok",
+      "source": "schedule",
+      "errors": []
     }
   ],
   "baseline": {
