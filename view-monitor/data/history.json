@@ -333,6 +333,18 @@
       "status": "ok",
       "source": "schedule",
       "errors": []
+    },
+    {
+      "timestamp": "2026-11-16T18:14:36+09:00",
+      "counts": {
+        "1200294": 771,
+        "1204144": 632,
+        "1210880": 586,
+        "1212154": 196
+      },
+      "status": "ok",
+      "source": "workflow_dispatch",
+      "errors": []
     }
   ],
   "baseline": {
