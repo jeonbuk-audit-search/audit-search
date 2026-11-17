@@ -1,5 +1,14 @@
 <!doctype html>
-<html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#102237"><title>큰그릇실장 조회수 LIVE</title>
+<html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#12364a">
+<meta name="application-name" content="큰그릇실장 조회수 LIVE">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="조회수 LIVE">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<title>큰그릇실장 조회수 LIVE</title>
 <style>
 :root{font-family:system-ui,"Malgun Gothic",sans-serif;color:#edf9ff;background:#0a1625}
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 75% 0%,#16475a,transparent 55%),#0a1625;min-height:100vh}
@@ -20,10 +29,24 @@ main{max-width:1150px;padding:28px 16px 72px;margin:auto}.eyebrow{color:#87eabb;
 .rawdetails{margin-top:16px}.rawdetails summary{cursor:pointer;color:#b3d4e8;font-size:13px;font-weight:750}
 @media(max-width:800px){.slotboard{grid-template-columns:1fr}.slot{padding:15px}}
 @media(max-width:800px){.cards{grid-template-columns:repeat(2,1fr)}.hero{grid-template-columns:1fr}}@media(max-width:430px){.card{padding:12px}.card strong{font-size:28px}.metric b{font-size:18px}}
+
+.installbar{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#122e44;border:1px solid #335771;border-radius:15px;padding:13px 15px;margin:17px 0 5px}
+.installbar .hint{font-size:12px;color:#acd1db;line-height:1.5}
+.installbtn{white-space:nowrap;background:#7de9bd;color:#092535;border:none;padding:12px 15px;border-radius:11px;font-weight:850}
+.installhelp{margin:9px 0;padding:14px 16px;background:#1a354a;border:1px solid #4c7188;border-radius:12px;color:#e0f4ff;font-size:13px;line-height:1.8}
+.installhelp[hidden]{display:none}
+.scheduleline{font-size:12px;color:#a9cbd6;padding:0 4px;margin:5px 0 11px}
+@media(max-width:600px){.installbar{flex-wrap:wrap}.installbtn{width:100%}}
 </style></head><body><main>
 <div class="top"><div><div class="eyebrow">BIG BOWL STUDIO · VIEW MONITOR</div><h1>큰그릇실장 <span style="color:#7de9bd">조회수 LIVE</span></h1><p>전북특별자치도교육청 · 내가 만든 프로그램 4종</p></div><span class="status" id="state">기록 확인 중</span></div>
+<div class="installbar" id="installbar">
+  <div><strong>📲 홈 화면에 설치하는 웹앱</strong><div class="hint">설치 후에도 최신 기록은 GitHub에서 불러옵니다.</div></div>
+  <button class="installbtn" id="installBtn" type="button" onclick="installApp()">홈 화면에 설치</button>
+</div>
+<div id="installHelp" class="installhelp" hidden></div>
 <div id="stale" class="stale" hidden></div>
 <section class="hero"><div><small>네 프로그램의 누적 조회수 합계</small><div class="total" id="total">—</div><small id="checked">최근 확인 기록을 불러오는 중</small></div><div class="metrics"><div class="metric"><small>이전 수집 대비</small><b id="change">—</b></div><div class="metric"><small>오늘 증가량</small><b id="today">—</b></div><div class="metric"><small>기록 횟수</small><b id="attempts">—</b></div><div class="metric"><small>예약 설정 간격</small><b>30분</b></div></div></section>
+<div class="scheduleline" id="scheduleStatus">정기 예약 실행 여부 확인 중…</div>
 <div class="buttons"><button class="btn primary" onclick="load()">↻ 저장 기록 불러오기</button><a class="btn" href="https://github.com/jeonbuk-audit-search/audit-search/actions/workflows/view-monitor.yml" target="_blank" rel="noopener">↗ 지금 수집 실행</a><a id="csv" class="btn" target="_blank" rel="noopener">↓ 이력 CSV</a><button onclick="downloadHistory()">↓ JSON 저장</button></div>
 <div class="cards" id="cards"></div>
 <div id="schedule-note" class="stale" hidden></div><section class="panel"><h2>시간별 조회수 증가 추이</h2><small>첫 확인값 대비 증가량입니다. 실제 확인한 시점만 연결합니다.</small><canvas id="chart"></canvas><div class="legend" id="legend"></div><small id="chartinfo">확인된 자동 수집 기록이 2회 이상 쌓이면 표시됩니다.</small></section>
@@ -34,6 +57,22 @@ const ROOT='https://raw.githubusercontent.com/jeonbuk-audit-search/audit-search/
 const IDs=['1200294','1204144','1210880','1212154'];
 const NAMES=['학교회계 운영지침·감사사례','감사ON','계약실무 길잡이','늙크크 AI 공작소'];
 const COLORS=['#77e9bd','#f6a6c7','#87bdff','#f4d18b'];
+let installPrompt=null;
+window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();installPrompt=event;document.getElementById('installBtn').textContent='앱 설치하기';});
+window.addEventListener('appinstalled',()=>{installPrompt=null;const el=document.getElementById('installbar');if(el)el.hidden=true;});
+async function installApp(){
+ if(installPrompt){
+  const prompt=installPrompt;installPrompt=null;
+  await prompt.prompt();
+  try{const result=await prompt.userChoice;if(result?.outcome==='accepted'){document.getElementById('installHelp').hidden=true;return}}catch(e){}
+ }
+ const ua=navigator.userAgent||'';
+ const samsung=/SamsungBrowser/i.test(ua);
+ const ios=/iPhone|iPad|iPod/i.test(ua);
+ const message=samsung?'삼성 인터넷에서 메뉴(≡) → 현재 페이지 추가 → 홈 화면을 누르세요.':ios?'Safari의 공유 버튼 → 홈 화면에 추가를 선택하세요.':'Chrome 또는 Edge 메뉴(⋮) → 홈 화면에 추가 / 앱 설치를 누르세요. 앱 설치 항목이 보이지 않으면 Chrome에서 이 주소를 직접 열어주세요.';
+ const box=document.getElementById('installHelp');box.textContent=message;box.hidden=false;box.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
 const fmt=x=>Number.isInteger(x)?x.toLocaleString('ko-KR'):'—';
 const sum=r=>r&&IDs.every(id=>Number.isInteger(r.counts?.[id]))?IDs.reduce((a,id)=>a+r.counts[id],0):null;
 const $=id=>document.getElementById(id);
@@ -79,11 +118,20 @@ async function load(){
  }
  if(best){
   if(recentTime(best.data)>=recentTime(history))history=best.data;
+  try{localStorage.setItem('bigbowl-live-snapshot',JSON.stringify(history))}catch(e){}
   render();
   $('errmsg').textContent=errors.length?'일부 기록 경로에 문제가 있습니다. '+errors.join(' / '):'';
  }else{
-  $('state').textContent='기록 연결 실패';
-  $('errmsg').textContent='GitHub 기록을 불러오지 못했습니다. '+errors.join(' / ');
+  let backup=null;
+  try{backup=JSON.parse(localStorage.getItem('bigbowl-live-snapshot')||'null')}catch(e){}
+  if(backup&&Array.isArray(backup.records)&&backup.records.length){
+    history=backup;render();
+    $('state').textContent='오프라인 · 저장본';
+    const warn=$('stale');warn.hidden=false;warn.textContent='인터넷에서 최신 기록을 받아오지 못했습니다. 현재 표시값은 이 기기에 마지막으로 저장한 과거 기록입니다.';
+  }else{
+    $('state').textContent='기록 연결 실패';
+  }
+  $('errmsg').textContent='새 기록 연결에 실패했습니다. '+errors.join(' / ');
  }
 }
 function render(){let all=history.records,good=all.filter(x=>sum(x)!==null).sort((a,b)=>a.timestamp.localeCompare(b.timestamp));let last=good.at(-1),prev=good.at(-2),ref=!last?{counts:history.baseline?.counts}:null,disp=last||ref;let age=last?Math.round((Date.now()-new Date(last.timestamp).getTime())/60000):null;let stale=age!==null&&age>45;let warning=$('stale');warning.hidden=!stale;warning.innerHTML=stale?'마지막 조회가 '+age+'분 전입니다. 예약 수집이 지연됐을 수 있습니다. <a href="https://github.com/jeonbuk-audit-search/audit-search/actions/workflows/view-monitor.yml" target="_blank" rel="noopener">지금 GitHub에서 수집 실행</a> 후 다시 불러오세요.':'';
@@ -94,7 +142,14 @@ $('attempts').textContent=fmt(all.length)+'회';$('change').textContent=last&&pr
 let first=last&&good.find(x=>x.timestamp.slice(0,10)===last.timestamp.slice(0,10));$('today').textContent=first&&last?delta(sum(last)-sum(first)):'—';
 $('cards').innerHTML=IDs.map((id,i)=>{let num=disp?.counts?.[id],before=prev?.counts?.[id];let d=Number.isInteger(num)&&Number.isInteger(before)?num-before:null;return '<article class="card"><small>PROGRAM '+String(i+1).padStart(2,'0')+'</small><h3>'+NAMES[i]+'</h3><strong>'+fmt(num)+'</strong><small>회</small><span class="delta">'+(d===null?'증가량 확인 대기':delta(d))+'</span><a href="https://www.jbe.go.kr/board/view.jbe?boardId=BBS_0000683&menuCd=DOM_000000106011002002&dataSid='+id+'" target="_blank" rel="noopener">교육청 원본 보기 ↗</a></article>'}).join('');
 $('history').innerHTML=all.length?[...all].reverse().slice(0,30).map(r=>'<tr><td>'+when(r.timestamp)+'</td>'+IDs.map(id=>'<td>'+fmt(r.counts?.[id])+'</td>').join('')+'<td>'+fmt(sum(r))+'</td><td>'+r.status+'</td></tr>').join(''):'<tr><td colspan="7">자동 수집 이력이 아직 없습니다.</td></tr>';
-$('csv').href=ROOT+'history.csv';const scheduled=all.filter(r=>r.source==='schedule');const note=$('schedule-note');note.hidden=scheduled.length>0;note.textContent=scheduled.length? '':'30분은 예약 설정 간격입니다. 현재 저장된 기록에는 정기 예약 실행(schedule) 성공 이력이 없습니다. 수동 실행이나 화면 수정으로 생성한 기록도 포함됩니다.';renderSlots(all);draw(good)}
+$('csv').href=ROOT+'history.csv';const scheduled=all.filter(r=>r.source==='schedule');
+ const scheduleText=$('scheduleStatus');
+ if(scheduleText){
+  const lastScheduled=scheduled.at(-1);
+  const schedAge=lastScheduled?Math.max(0,Math.floor((Date.now()-new Date(lastScheduled.timestamp))/60000)):null;
+  scheduleText.textContent=lastScheduled?'정기 자동 수집 성공 '+scheduled.length+'회 · 최근 정기 실행 '+when(lastScheduled.timestamp)+(schedAge>60?' · 정기 실행이 '+schedAge+'분 전입니다.':' · 약 30분 목표 (보장되지 않음)'):'정기 자동 수집 이력 없음 · 설정 변경·수동 실행과 구분해서 표시';
+ }
+ const note=$('schedule-note');note.hidden=scheduled.length>0;note.textContent=scheduled.length? '':'30분은 예약 설정 간격입니다. 현재 저장된 기록에는 정기 예약 실행(schedule) 성공 이력이 없습니다. 수동 실행이나 화면 수정으로 생성한 기록도 포함됩니다.';renderSlots(all);draw(good)}
 
 function renderSlots(records){
  const M=1800000, grouped=new Map();
@@ -119,5 +174,11 @@ function renderSlots(records){
 }
 
 function draw(good){let cv=$('chart'),ctx=cv.getContext('2d'),w=cv.clientWidth||700,h=cv.clientHeight||270,ratio=devicePixelRatio||1;cv.width=w*ratio;cv.height=h*ratio;ctx.setTransform(ratio,0,0,ratio,0,0);ctx.clearRect(0,0,w,h);$('legend').innerHTML=COLORS.map((c,i)=>'<span style="color:'+c+'">● '+NAMES[i]+'</span>').join('');if(good.length<2){$('chartinfo').textContent='자동 수집 기록 2회 이상부터 추이가 나타납니다.';return}$('chartinfo').textContent='자동 수집 이력 '+good.length+'회 기준';let pts=good.slice(-200),base=pts[0].counts,v=pts.flatMap(x=>IDs.map(id=>x.counts[id]-base[id])),low=Math.min(0,...v),high=Math.max(0,...v),pad=Math.max(1,(high-low)*.13);low=Math.min(0,low-pad);high=Math.max(1,high+pad);let l=45,r=12,t=15,b=30,pw=w-l-r,ph=h-t-b;for(let k=0;k<5;k++){let y=t+ph*k/4;ctx.strokeStyle='#36566b';ctx.beginPath();ctx.moveTo(l,y);ctx.lineTo(w-r,y);ctx.stroke();ctx.fillStyle='#a7c0cc';ctx.font='11px sans-serif';ctx.fillText(fmt(Math.round(high-(high-low)*k/4)),2,y+4)}IDs.forEach((id,i)=>{ctx.beginPath();ctx.strokeStyle=COLORS[i];ctx.lineWidth=2.5;pts.forEach((x,j)=>{let xx=l+pw*j/(pts.length-1),yy=t+ph*(1-(x.counts[id]-base[id]-low)/(high-low));if(j===0)ctx.moveTo(xx,yy);else ctx.lineTo(xx,yy)});ctx.stroke()});ctx.fillStyle='#9db9c8';ctx.font='11px sans-serif';ctx.textAlign='left';ctx.fillText(new Date(pts[0].timestamp).toLocaleTimeString('ko-KR',{timeZone:'Asia/Seoul',hour:'2-digit',minute:'2-digit',hour12:false}),l,h-7);ctx.textAlign='right';ctx.fillText(new Date(pts.at(-1).timestamp).toLocaleTimeString('ko-KR',{timeZone:'Asia/Seoul',hour:'2-digit',minute:'2-digit',hour12:false}),w-r,h-7)}
-load();setInterval(load,60000);window.addEventListener('resize',()=>render());
+load();
+setInterval(load,60000);
+window.addEventListener('resize',()=>render());
+if('serviceWorker' in navigator && location.protocol==='https:'){
+ window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(e=>console.warn('PWA worker unavailable',e)));
+}
+
 </script></body></html>
