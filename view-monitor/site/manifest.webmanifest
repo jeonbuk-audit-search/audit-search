@@ -1,0 +1,40 @@
+{
+  "name": "큰그릇실장 조회수 LIVE",
+  "short_name": "조회수 LIVE",
+  "description": "학교회계·감사ON·계약실무·늙크크 AI 공작소 조회수와 30분별 기록을 확인하는 모바일 웹앱",
+  "id": "./",
+  "start_url": "./?utm_source=home_screen",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "background_color": "#0a1625",
+  "theme_color": "#12364a",
+  "lang": "ko-KR",
+  "categories": [
+    "productivity",
+    "utilities"
+  ],
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
