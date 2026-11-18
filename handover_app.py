@@ -5,10 +5,11 @@
 - 로컬 SQLite 저장 → 내부망/외부 어디서든 동일하게 동작
 """
 import calendar
+import hashlib
 import io
 import re
 import sqlite3
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 import pandas as pd
@@ -39,9 +40,10 @@ def db():
         CREATE TABLE IF NOT EXISTS logs(
             task_id INTEGER, period TEXT, status TEXT, memo TEXT, updated TEXT,
             PRIMARY KEY(task_id, period));
-        CREATE TABLE IF NOT EXISTS handovers(
+        CREATE TABLE IF NOT EXISTS handover_docs(
             id INTEGER PRIMARY KEY AUTOINCREMENT, school TEXT, role TEXT,
-            from_name TEXT, to_name TEXT, signed_from TEXT, signed_to TEXT, created TEXT);
+            from_name TEXT, to_name TEXT, content TEXT, doc_hash TEXT, created TEXT,
+            signed_from_at TEXT, signed_to_at TEXT);
         """
     )
     return con
@@ -272,21 +274,153 @@ def build_handover(role_sel, from_name, to_name):
         "WHERE t.school=? AND l.status IN ('미착수','진행') ORDER BY l.period DESC", (school,)).fetchall()
     L.append(f"## 미결·진행 중 업무 ({len(pend)}건)")
     L += [f"- {p['title']} ({p['period']}, {p['status']}) {p['memo'] or ''}" for p in pend] or ["(없음)"]
-    L += ["", "## 서명", f"- 인계자: {from_name}  (서명일: ________)",
-          f"- 인수자: {to_name}  (서명일: ________)", ""]
     return "\n".join(L)
 
 
+# ---------- PDF ----------
+FONT_CANDIDATES = [
+    (BASE / "fonts" / "NanumGothic.ttf", None),
+    (Path("C:/Windows/Fonts/malgun.ttf"), None),
+    (Path("/System/Library/Fonts/AppleSDGothicNeo.ttc"), 0),
+    (Path("/usr/share/fonts/truetype/nanum/NanumGothic.ttf"), None),
+    (Path("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"), 0),
+    (Path("/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc"), 0),
+]
+
+
+def register_font():
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+
+    for path, idx in FONT_CANDIDATES:
+        if path.exists():
+            kw = {"subfontIndex": idx} if idx is not None else {}
+            pdfmetrics.registerFont(TTFont("KR", str(path), **kw))
+            return "KR"
+    from reportlab.pdfbase.cidfonts import UnicodeCIDFont
+
+    pdfmetrics.registerFont(UnicodeCIDFont("HYSMyeongJo-Medium"))  # 폰트 미내장(뷰어 의존)
+    return "HYSMyeongJo-Medium"
+
+
+def doc_status(doc):
+    if doc and doc["signed_from_at"] and doc["signed_to_at"]:
+        return "서명 완료"
+    if doc and doc["signed_from_at"]:
+        return "인수자 서명 대기"
+    return "인계자 서명 대기"
+
+
+def build_pdf(doc):
+    from xml.sax.saxutils import escape
+
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.units import mm
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
+    f = register_font()
+    st_ = {
+        "h1": ParagraphStyle("h1", fontName=f, fontSize=18, leading=24, spaceAfter=8),
+        "h2": ParagraphStyle("h2", fontName=f, fontSize=13, leading=18, spaceBefore=10, spaceAfter=4),
+        "h3": ParagraphStyle("h3", fontName=f, fontSize=10.5, leading=15, spaceBefore=6),
+        "li": ParagraphStyle("li", fontName=f, fontSize=9, leading=13, leftIndent=10),
+        "p": ParagraphStyle("p", fontName=f, fontSize=9, leading=13),
+    }
+    flow = []
+    for line in doc["content"].split("\n"):
+        if not line.strip():
+            flow.append(Spacer(1, 3))
+        elif line.startswith("### "):
+            flow.append(Paragraph(escape(line[4:]), st_["h3"]))
+        elif line.startswith("## "):
+            flow.append(Paragraph(escape(line[3:]), st_["h2"]))
+        elif line.startswith("# "):
+            flow.append(Paragraph(escape(line[2:]), st_["h1"]))
+        elif line.startswith("- "):
+            flow.append(Paragraph("• " + escape(line[2:]), st_["li"]))
+        else:
+            flow.append(Paragraph(escape(line), st_["p"]))
+
+    flow += [Spacer(1, 10), Paragraph("서명", st_["h2"])]
+    def cell(name, at):
+        return f"{name}\n" + (f"전자서명 {at}" if at else "서명 전")
+    tbl = Table(
+        [["구분", "성명", "서명 일시"],
+         ["인계자", doc["from_name"], doc["signed_from_at"] or "서명 전"],
+         ["인수자", doc["to_name"], doc["signed_to_at"] or "서명 전"]],
+        colWidths=[30 * mm, 50 * mm, 80 * mm],
+    )
+    tbl.setStyle(TableStyle([
+        ("FONTNAME", (0, 0), (-1, -1), f), ("FONTSIZE", (0, 0), (-1, -1), 10),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#EEEEEE")),
+        ("TOPPADDING", (0, 0), (-1, -1), 8), ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+    ]))
+    flow += [tbl, Spacer(1, 6),
+             Paragraph(f"상태: {doc_status(doc)} · 문서 무결성 코드(SHA-256): {doc['doc_hash'][:32]}…", st_["p"])]
+    if not doc["signed_to_at"]:
+        flow.append(Paragraph("※ 양측 서명 전의 초안입니다.", st_["p"]))
+    buf = io.BytesIO()
+    SimpleDocTemplate(buf, pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm,
+                      topMargin=16 * mm, bottomMargin=16 * mm,
+                      title=f"{school} 인수인계서").build(flow)
+    return buf.getvalue()
+
+
 with tab_handover:
+    st.subheader("1. 인계서 작성·확정")
     if tasks.empty:
         st.info("먼저 업무 카드를 등록하세요.")
     else:
         roles = ["전체"] + sorted(tasks["role"].unique().tolist())
         r1, r2, r3 = st.columns(3)
         role_sel = r1.selectbox("인계 대상 역할", roles)
-        from_name = r2.text_input("인계자")
-        to_name = r3.text_input("인수자")
+        from_name = r2.text_input("인계자 성명")
+        to_name = r3.text_input("인수자 성명")
         md = build_handover(role_sel, from_name, to_name)
-        st.download_button("⬇️ 인수인계서 다운로드(.md)", md.encode("utf-8"),
-                           file_name=f"{school}_인수인계서_{date.today().isoformat()}.md")
-        st.markdown(md)
+        with st.expander("미리보기"):
+            st.markdown(md)
+        st.caption("확정하면 현재 내용이 그대로 저장되고 수정할 수 없습니다. 내용을 바꾸려면 새로 확정하세요.")
+        if st.button("📌 인계서 확정(저장)", disabled=not (from_name.strip() and to_name.strip())):
+            h = hashlib.sha256(md.encode("utf-8")).hexdigest()
+            con.execute(
+                "INSERT INTO handover_docs(school,role,from_name,to_name,content,doc_hash,created) VALUES(?,?,?,?,?,?,?)",
+                (school, role_sel, from_name.strip(), to_name.strip(), md, h, datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
+            )
+            con.commit()
+            st.success("확정했습니다. 아래에서 서명하세요.")
+            st.rerun()
+
+    st.subheader("2. 서명 및 PDF")
+    docs = con.execute("SELECT * FROM handover_docs WHERE school=? ORDER BY id DESC", (school,)).fetchall()
+    if not docs:
+        st.caption("확정된 인계서가 없습니다.")
+    for d in docs:
+        with st.expander(f"#{d['id']} {d['role']} · {d['from_name']} → {d['to_name']} · {d['created']} · **{doc_status(d)}**"):
+            if not d["signed_from_at"]:
+                who, col, nm = "인계자", "signed_from_at", d["from_name"]
+            elif not d["signed_to_at"]:
+                who, col, nm = "인수자", "signed_to_at", d["to_name"]
+            else:
+                who = None
+            if who:
+                st.markdown(f"**{who} 서명** — 본인 성명 `{nm}`을(를) 그대로 입력하고 확인에 체크하세요.")
+                typed = st.text_input("성명 입력", key=f"sg{d['id']}{col}")
+                ok = st.checkbox("인계서 내용을 확인했으며 이에 서명합니다.", key=f"ck{d['id']}{col}")
+                if st.button(f"✍️ {who} 서명", key=f"sb{d['id']}{col}", disabled=not (ok and typed.strip() == nm)):
+                    con.execute(f"UPDATE handover_docs SET {col}=? WHERE id=?",
+                                (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), d["id"]))
+                    con.commit()
+                    st.rerun()
+            else:
+                st.success("양측 서명이 완료되었습니다.")
+            try:
+                st.download_button("⬇️ PDF 다운로드", build_pdf(d), file_name=f"{school}_인수인계서_{d['id']}.pdf",
+                                   mime="application/pdf", key=f"pdf{d['id']}")
+            except Exception as e:  # reportlab 미설치 등
+                st.error(f"PDF 생성 실패: {e}")
+            st.download_button("⬇️ 마크다운", d["content"].encode("utf-8"),
+                               file_name=f"{school}_인수인계서_{d['id']}.md", key=f"md{d['id']}")
+            st.caption(f"무결성 코드(SHA-256): {d['doc_hash']}")
