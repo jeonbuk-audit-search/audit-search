@@ -254,6 +254,7 @@ function getDailyRecords(all){
  return daily;
 }
 function dailyNum(n){return n===null||!Number.isFinite(n)?'—':((n>0?'+':'')+fmt(n));}
+function dailyGrowth(n){return n===null||!Number.isFinite(n)?'비교 불가':dailyNum(n)+'회';}
 function dailyLabel(day){const d=new Date(day+'T12:00:00+09:00');return new Intl.DateTimeFormat('ko-KR',{timeZone:'Asia/Seoul',month:'long',day:'numeric',weekday:'short'}).format(d);}
 function csvCell(value){const str=String(value??'');return '"'+str.replace(/"/g,'""')+'"';}
 function downloadDailyCsv(){
@@ -275,8 +276,8 @@ function renderDaily(){
  const n=select?.value==='all'?all.length:Number(select?.value||7);
  const displayed=all.slice(-n),today=kstDay(new Date().toISOString()),current=all.find(d=>d.day===today),yesterday=all.find(d=>d.day===shiftDay(today,-1));
  const $d=id=>document.getElementById(id);
- $d('dailyToday').textContent=dailyNum(current?.delta??null)+'회';
- $d('dailyYesterday').textContent=dailyNum(yesterday?.delta??null)+'회';
+ $d('dailyToday').textContent=dailyGrowth(current?.delta??null);
+ $d('dailyYesterday').textContent=dailyGrowth(yesterday?.delta??null);
  $d('dailyDays').textContent=all.filter(d=>!d.missing).length+'일';
  if(!displayed.length){
   $d('dailyCards').textContent='아직 성공한 수집 기록이 없습니다.';
