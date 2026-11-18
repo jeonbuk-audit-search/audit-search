@@ -6,10 +6,13 @@
 """
 import calendar
 import hashlib
+import hmac
 import io
+import os
 import re
+import secrets
 import sqlite3
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -40,6 +43,8 @@ def db():
         CREATE TABLE IF NOT EXISTS logs(
             task_id INTEGER, period TEXT, status TEXT, memo TEXT, updated TEXT,
             PRIMARY KEY(task_id, period));
+        CREATE TABLE IF NOT EXISTS schools(
+            school TEXT PRIMARY KEY, salt TEXT, pw_hash TEXT, fails INTEGER DEFAULT 0, locked_until TEXT);
         CREATE TABLE IF NOT EXISTS handover_docs(
             id INTEGER PRIMARY KEY AUTOINCREMENT, school TEXT, role TEXT,
             from_name TEXT, to_name TEXT, content TEXT, doc_hash TEXT, created TEXT,
@@ -121,6 +126,81 @@ if not school.strip():
     st.title("📋 학교 업무 인수인계 프로그램")
     st.info("👈 왼쪽에 학교명을 입력하면 시작할 수 있습니다. 업무 카드는 학교별로 따로 저장됩니다.")
     st.stop()
+
+
+# ---------- 학교별 비밀번호 ----------
+MAX_FAILS, LOCK_MIN, MIN_PW = 5, 10, 6
+
+
+def hash_pw(pw, salt):
+    return hashlib.pbkdf2_hmac("sha256", pw.encode("utf-8"), bytes.fromhex(salt), 200_000).hex()
+
+
+def set_password(con_, name, pw):
+    salt = secrets.token_hex(16)
+    con_.execute("INSERT OR REPLACE INTO schools VALUES(?,?,?,0,NULL)", (name, salt, hash_pw(pw, salt)))
+    con_.commit()
+
+
+auth_con = db()
+srow = auth_con.execute("SELECT * FROM schools WHERE school=?", (school,)).fetchone()
+if st.session_state.get("auth_school") != school:
+    st.title("📋 학교 업무 인수인계 프로그램")
+    if srow is None:
+        st.info(f"'{school}'은(는) 처음 사용하는 학교입니다. 접속 비밀번호를 정하세요.")
+        with st.form("setpw"):
+            p1 = st.text_input("비밀번호(6자 이상)", type="password")
+            p2 = st.text_input("비밀번호 확인", type="password")
+            if st.form_submit_button("등록하고 시작"):
+                if len(p1) < MIN_PW:
+                    st.error(f"비밀번호는 {MIN_PW}자 이상이어야 합니다.")
+                elif p1 != p2:
+                    st.error("비밀번호가 일치하지 않습니다.")
+                else:
+                    set_password(auth_con, school, p1)
+                    st.session_state["auth_school"] = school
+                    st.rerun()
+        st.caption("비밀번호는 분실 시 복구할 수 없습니다(관리자 초기화만 가능). 담당자 간에 안전하게 공유하세요.")
+    else:
+        locked = srow["locked_until"] and datetime.fromisoformat(srow["locked_until"]) > datetime.now()
+        if locked:
+            st.error(f"로그인 시도가 너무 많습니다. {srow['locked_until'][11:16]} 이후에 다시 시도하세요.")
+        with st.form("loginpw"):
+            pw = st.text_input("접속 비밀번호", type="password")
+            if st.form_submit_button("입장", disabled=bool(locked)):
+                if hmac.compare_digest(hash_pw(pw, srow["salt"]), srow["pw_hash"]):
+                    auth_con.execute("UPDATE schools SET fails=0, locked_until=NULL WHERE school=?", (school,))
+                    auth_con.commit()
+                    st.session_state["auth_school"] = school
+                    st.rerun()
+                fails = (srow["fails"] or 0) + 1
+                until = (datetime.now() + timedelta(minutes=LOCK_MIN)).isoformat(timespec="seconds") if fails >= MAX_FAILS else None
+                auth_con.execute("UPDATE schools SET fails=?, locked_until=? WHERE school=?",
+                                 (0 if until else fails, until, school))
+                auth_con.commit()
+                st.error("비밀번호가 올바르지 않습니다." + (f" {MAX_FAILS}회 실패하여 {LOCK_MIN}분간 잠깁니다." if until else ""))
+        admin_pw = os.environ.get("HANDOVER_ADMIN_PASSWORD")
+        if admin_pw:
+            with st.expander("관리자: 비밀번호 초기화"):
+                a = st.text_input("관리자 비밀번호", type="password", key="adm")
+                n = st.text_input("새 비밀번호(6자 이상)", type="password", key="admn")
+                if st.button("초기화") and hmac.compare_digest(a, admin_pw) and len(n) >= MIN_PW:
+                    set_password(auth_con, school, n)
+                    st.success("초기화했습니다. 새 비밀번호로 입장하세요.")
+    st.stop()
+
+if st.sidebar.button("🔒 로그아웃"):
+    st.session_state.pop("auth_school", None)
+    st.rerun()
+with st.sidebar.expander("비밀번호 변경"):
+    cur = st.text_input("현재 비밀번호", type="password", key="pw_cur")
+    new = st.text_input("새 비밀번호(6자 이상)", type="password", key="pw_new")
+    if st.button("변경"):
+        if hmac.compare_digest(hash_pw(cur, srow["salt"]), srow["pw_hash"]) and len(new) >= MIN_PW:
+            set_password(auth_con, school, new)
+            st.success("변경했습니다.")
+        else:
+            st.error("현재 비밀번호가 틀리거나 새 비밀번호가 짧습니다.")
 
 con = db()
 tasks = pd.read_sql_query(
