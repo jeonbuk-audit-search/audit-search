@@ -52,3 +52,21 @@ if search_query:
         st.info("해당 키워드가 포함된 감사 지적 사례가 없습니다. 다른 검색어로 시도해 보세요.")
 else:
     st.info("👆 위 검색창에 궁금한 감사 지적 키워드를 입력해 보세요.")
+
+
+---
+
+## 📋 학교 업무 인수인계 프로그램
+
+일·월·분기·년 주기별 업무 카드, 마감 알림 배너, 감사사례 연계, 인계서 확정·서명·PDF, 학교별 비밀번호를 제공합니다.
+기획서: `docs/인수인계_프로그램_기획서.md`
+
+```bash
+pip install -r requirements.txt
+HANDOVER_ADMIN_PASSWORD=관리자암호 streamlit run handover_app.py   # 관리자 암호는 비밀번호 초기화용(선택)
+```
+
+- 데이터: 로컬 `handover.db`(SQLite, git 제외). 정기 백업 권장
+- PDF 한글: `fonts/NanumGothic.ttf`를 넣어 두면 어느 PC에서나 동일하게 출력
+- 표준 업무 카드: `handover_templates.csv` (학교에서 불러와 수정)
+- 외부 공개 시 https 필수. 인계서에 개인정보 입력 금지
