@@ -37,6 +37,36 @@ main{max-width:1150px;padding:28px 16px 72px;margin:auto}.eyebrow{color:#87eabb;
 .installhelp[hidden]{display:none}
 .scheduleline{font-size:12px;color:#a9cbd6;padding:0 4px;margin:5px 0 11px}
 @media(max-width:600px){.installbar{flex-wrap:wrap}.installbtn{width:100%}}
+
+/* Calendar-day cumulative view history */
+.daily-head{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.daily-head h2{margin-bottom:8px}
+.daily-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.daily-select{background:#102c40;border:1px solid #527488;color:#eefbff;font-size:13px;padding:10px 11px;border-radius:9px}
+.daily-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:19px 0}
+.daily-stat{padding:15px;background:#0c2335;border:1px solid #35526a;border-radius:13px;min-width:0}
+.daily-stat small{display:block;font-size:12px}
+.daily-stat strong{display:block;font-size:clamp(20px,3vw,30px);margin-top:7px;color:#8af4d0;font-variant-numeric:tabular-nums}
+#dailyChart{display:block;width:100%;height:235px;margin:13px 0 3px}
+.daily-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin-top:17px}
+.daily-day{background:#112d42;border:1px solid #31586b;border-radius:14px;padding:15px;min-width:0}
+.daily-day.missing{border-style:dashed;background:#152a3a}
+.daily-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.daily-date{font-size:15px;font-weight:850}
+.daily-chip{font-size:11px;color:#98f3c9;background:#235749;border-radius:100px;padding:3px 8px;white-space:nowrap}
+.daily-chip.partial{background:#695023;color:#ffe3ad}
+.daily-chip.missing{background:#354453;color:#dae3ea}
+.daily-total{font-weight:900;font-size:clamp(26px,4vw,36px);letter-spacing:-1px;margin-top:10px}
+.daily-increase{font-size:13px;color:#8befcb;margin:4px 0 12px}
+.daily-programs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-top:1px solid #345366;padding-top:12px;gap:12px}
+.daily-program label{font-size:11px;display:block;color:#a8c3cf;margin-bottom:4px}
+.daily-program strong{font-size:19px;display:block;font-variant-numeric:tabular-nums}
+.daily-program em{font-style:normal;font-size:11px;color:#93e5c4}
+.daily-foot{font-size:12px;color:#acc6d2;line-height:1.75;margin:17px 0 5px}
+.daily-table{min-width:950px}
+.daily-table th,.daily-table td{white-space:nowrap}
+@media(max-width:850px){.daily-cards{grid-template-columns:1fr}}
+@media(max-width:450px){.daily-stats{gap:6px}.daily-stat{padding:11px 8px}.daily-stat small{font-size:10px}.daily-stat strong{font-size:20px}.daily-day{padding:13px}}
 </style></head><body><main>
 <div class="top"><div><div class="eyebrow">BIG BOWL STUDIO · VIEW MONITOR</div><h1>큰그릇실장 <span style="color:#7de9bd">조회수 LIVE</span></h1><p>전북특별자치도교육청 · 내가 만든 프로그램 4종</p></div><span class="status" id="state">기록 확인 중</span></div>
 <div class="installbar" id="installbar">
@@ -49,7 +79,33 @@ main{max-width:1150px;padding:28px 16px 72px;margin:auto}.eyebrow{color:#87eabb;
 <div class="scheduleline" id="scheduleStatus">정기 예약 실행 여부 확인 중…</div>
 <div class="buttons"><button class="btn primary" onclick="load()">↻ 저장 기록 불러오기</button><a class="btn" href="https://github.com/jeonbuk-audit-search/audit-search/actions/workflows/view-monitor.yml" target="_blank" rel="noopener">↗ 지금 수집 실행</a><a id="csv" class="btn" target="_blank" rel="noopener">↓ 이력 CSV</a><button onclick="downloadHistory()">↓ JSON 저장</button></div>
 <div class="cards" id="cards"></div>
-<div id="schedule-note" class="stale" hidden></div><section class="panel"><h2>시간별 조회수 증가 추이</h2><small>첫 확인값 대비 증가량입니다. 실제 확인한 시점만 연결합니다.</small><canvas id="chart"></canvas><div class="legend" id="legend"></div><small id="chartinfo">확인된 자동 수집 기록이 2회 이상 쌓이면 표시됩니다.</small></section>
+<div id="schedule-note" class="stale" hidden></div><section class="panel" id="daily">
+  <div class="daily-head">
+    <div><h2>일별 누적 카운팅</h2><small>한국 시간(KST) 기준 · 날짜별 마지막 성공 기록과 전일 대비 증가량</small></div>
+    <div class="daily-actions">
+      <select id="dailyRange" class="daily-select" aria-label="조회 기간" onchange="renderDaily()">
+        <option value="7">최근 7일</option><option value="30">최근 30일</option><option value="all">전체 기록</option>
+      </select>
+      <button class="btn" type="button" onclick="downloadDailyCsv()">↓ 일별 CSV</button>
+    </div>
+  </div>
+  <div class="daily-stats">
+    <div class="daily-stat"><small>오늘 현재 증가</small><strong id="dailyToday">—</strong></div>
+    <div class="daily-stat"><small>어제 관측 증가</small><strong id="dailyYesterday">—</strong></div>
+    <div class="daily-stat"><small>기록된 날짜</small><strong id="dailyDays">—</strong></div>
+  </div>
+  <canvas id="dailyChart" role="img" aria-label="날짜별 조회수 증가 추이"></canvas>
+  <small id="dailyChartInfo">전날과 당일에 모두 수집 기록이 있을 때만 증가량을 계산합니다.</small>
+  <div class="daily-cards" id="dailyCards" aria-live="polite"><p>일별 기록을 불러오는 중…</p></div>
+  <details class="rawdetails"><summary>날짜별 전체 수치를 표로 보기</summary>
+    <div class="tablewrap">
+      <table class="daily-table"><thead><tr><th>날짜</th><th>누적 합계</th><th>전날 대비</th><th>학교회계 누적</th><th>감사ON 누적</th><th>계약실무 누적</th><th>AI 공작소 누적</th><th>마지막 확인</th></tr></thead>
+      <tbody id="dailyTable"></tbody></table>
+    </div>
+  </details>
+  <p class="daily-foot">* 각 날짜에 마지막으로 확인된 누적 조회수를 사용합니다. 전날과 당일 기록을 비교한 증가량으로, 하루의 정확한 0시~24시 조회수를 뜻하지는 않습니다. 오늘은 진행 중인 수치이며, 수집이 없던 날은 ‘기록 없음’으로 표시합니다.</p>
+</section>
+<section class="panel"><h2>시간별 조회수 증가 추이</h2><small>첫 확인값 대비 증가량입니다. 실제 확인한 시점만 연결합니다.</small><canvas id="chart"></canvas><div class="legend" id="legend"></div><small id="chartinfo">확인된 자동 수집 기록이 2회 이상 쌓이면 표시됩니다.</small></section>
 <section class="panel"><h2>30분 단위 조회 현황</h2><small>00~29분과 30~59분 구간으로 묶었습니다. 확인하지 않은 구간에는 숫자를 넣지 않습니다.</small><div id="slotboard" class="slotboard" aria-live="polite"></div><details class="rawdetails"><summary>전체 원본 수집 기록 펼쳐보기</summary><div class="tablewrap"><table><thead><tr><th>확인 시간(KST)</th><th>학교회계</th><th>감사ON</th><th>계약실무</th><th>AI 공작소</th><th>합계</th><th>상태</th></tr></thead><tbody id="history"><tr><td colspan="7">기록을 불러오는 중…</td></tr></tbody></table></div></details></section>
 <footer id="errmsg"></footer><footer>자료 출처: 전북특별자치도교육청 「교직원 제작 도구」 게시판 목록의 조회수. 방문자 수·다운로드 수와 다릅니다. 자동 수집에 실패한 경우 마지막 성공값을 새로운 조회수로 기록하지 않습니다. GitHub Actions 예약 실행은 실제 시각이 지연될 수 있습니다.</footer>
 </main><script>
@@ -149,7 +205,129 @@ $('csv').href=ROOT+'history.csv';const scheduled=all.filter(r=>r.source==='sched
   const schedAge=lastScheduled?Math.max(0,Math.floor((Date.now()-new Date(lastScheduled.timestamp))/60000)):null;
   scheduleText.textContent=lastScheduled?'정기 자동 수집 성공 '+scheduled.length+'회 · 최근 정기 실행 '+when(lastScheduled.timestamp)+(schedAge>60?' · 정기 실행이 '+schedAge+'분 전입니다.':' · 약 30분 목표 (보장되지 않음)'):'정기 자동 수집 이력 없음 · 설정 변경·수동 실행과 구분해서 표시';
  }
- const note=$('schedule-note');note.hidden=scheduled.length>0;note.textContent=scheduled.length? '':'30분은 예약 설정 간격입니다. 현재 저장된 기록에는 정기 예약 실행(schedule) 성공 이력이 없습니다. 수동 실행이나 화면 수정으로 생성한 기록도 포함됩니다.';renderSlots(all);draw(good)}
+ const note=$('schedule-note');note.hidden=scheduled.length>0;note.textContent=scheduled.length? '':'30분은 예약 설정 간격입니다. 현재 저장된 기록에는 정기 예약 실행(schedule) 성공 이력이 없습니다. 수동 실행이나 화면 수정으로 생성한 기록도 포함됩니다.';renderDaily();renderSlots(all);draw(good)}
+
+
+/** Daily cumulative counts from the last COMPLETE successful snapshot for each Korean calendar day.
+ * Missing days are represented explicitly, never interpolated or counted as zero.
+ * 'Daily increase' = last observation today minus last observation yesterday.
+ */
+const KST_DAY_FORMAT = new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit'});
+function kstDay(timestamp){
+ const dt=new Date(timestamp);
+ if(!Number.isFinite(dt.getTime()))return null;
+ const parts=Object.fromEntries(KST_DAY_FORMAT.formatToParts(dt).filter(p=>p.type!=='literal').map(p=>[p.type,p.value]));
+ return parts.year+'-'+parts.month+'-'+parts.day;
+}
+function shiftDay(day,offset){
+ const dt=new Date(day+'T12:00:00Z');
+ dt.setUTCDate(dt.getUTCDate()+offset);
+ return dt.toISOString().slice(0,10);
+}
+function getDailyRecords(all){
+ const byDay=new Map();
+ for(const entry of all||[]){
+  if(entry?.status!=='ok'||sum(entry)===null)continue;
+  const date=kstDay(entry.timestamp);
+  if(!date)continue;
+  const before=byDay.get(date);
+  if(!before||new Date(entry.timestamp).getTime()>new Date(before.timestamp).getTime())byDay.set(date,entry);
+ }
+ const recordedDays=[...byDay.keys()].sort();
+ if(!recordedDays.length)return [];
+ const today=kstDay(new Date().toISOString());
+ const end=today>recordedDays.at(-1)?today:recordedDays.at(-1);
+ const daily=[];
+ for(let date=recordedDays[0];date<=end;date=shiftDay(date,1)){
+  const latest=byDay.get(date)||null,prior=byDay.get(shiftDay(date,-1))||null;
+  const valid=latest?sum(latest):null;
+  const change=latest&&prior?valid-sum(prior):null;
+  const byProgram=IDs.map(id=>latest&&prior?latest.counts[id]-prior.counts[id]:null);
+  daily.push({
+   day:date,counts:latest?.counts||null,total:valid,delta:change,
+   programChanges:byProgram,timestamp:latest?.timestamp||null,
+   current:date===today,missing:!latest
+  });
+  // Guard against unexpectedly future-dated or corrupted records.
+  if(daily.length>2000)break;
+ }
+ return daily;
+}
+function dailyNum(n){return n===null||!Number.isFinite(n)?'—':((n>0?'+':'')+fmt(n));}
+function dailyLabel(day){const d=new Date(day+'T12:00:00+09:00');return new Intl.DateTimeFormat('ko-KR',{timeZone:'Asia/Seoul',month:'long',day:'numeric',weekday:'short'}).format(d);}
+function csvCell(value){const str=String(value??'');return '"'+str.replace(/"/g,'""')+'"';}
+function downloadDailyCsv(){
+ const rows=getDailyRecords(history.records);
+ if(!rows.length)return;
+ const head=['날짜(KST)','학교회계 누적','학교회계 전일대비','감사ON 누적','감사ON 전일대비','계약실무 누적','계약실무 전일대비','AI 공작소 누적','AI 공작소 전일대비','누적 합계','전날 대비 증가','마지막 확인(KST)','구분'];
+ const lines=[head.map(csvCell).join(',')];
+ for(const d of rows){
+  const vals=[d.day];
+  IDs.forEach((id,i)=>vals.push(d.counts?.[id]??'',d.programChanges[i]??''));
+  vals.push(d.total??'',d.delta??'',d.timestamp??'',d.missing?'기록 없음':d.current?'진행 중':'마지막 기록');
+  lines.push(vals.map(csvCell).join(','));
+ }
+ const blob=new Blob(['\uFEFF'+lines.join('\r\n')],{type:'text/csv;charset=utf-8;'});
+ const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='큰그릇실장_일별누적_조회수.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),3000);
+}
+function renderDaily(){
+ const all=getDailyRecords(history.records),select=document.getElementById('dailyRange');
+ const n=select?.value==='all'?all.length:Number(select?.value||7);
+ const displayed=all.slice(-n),today=kstDay(new Date().toISOString()),current=all.find(d=>d.day===today),yesterday=all.find(d=>d.day===shiftDay(today,-1));
+ const $d=id=>document.getElementById(id);
+ $d('dailyToday').textContent=dailyNum(current?.delta??null)+'회';
+ $d('dailyYesterday').textContent=dailyNum(yesterday?.delta??null)+'회';
+ $d('dailyDays').textContent=all.filter(d=>!d.missing).length+'일';
+ if(!displayed.length){
+  $d('dailyCards').textContent='아직 성공한 수집 기록이 없습니다.';
+  $d('dailyTable').innerHTML='<tr><td colspan="8">기록 없음</td></tr>';
+  drawDailyGraph([]);return;
+ }
+ const compact=['학교회계','감사ON','계약실무','AI 공작소'];
+ const reversed=[...displayed].reverse();
+ $d('dailyCards').innerHTML=reversed.map(d=>{
+  const missing=d.missing,tag=missing?'기록 없음':d.current?'진행 중':'마지막 기록';
+  const cls=missing?' missing':d.current?' partial':'';
+  const info=missing?'<p style="font-size:13px;color:#a9c8d6">이 날짜에 확인된 수집 기록이 없습니다.</p>':
+   '<div class="daily-total">'+fmt(d.total)+'회</div><div class="daily-increase">'+(d.delta===null?'전날 기록이 없어 비교할 수 없습니다':'전날 마지막 기록 대비 '+dailyNum(d.delta)+'회')+'</div>'+
+   '<div class="daily-programs">'+IDs.map((id,i)=>'<div class="daily-program"><label>'+compact[i]+'</label><strong style="color:'+COLORS[i]+'">'+fmt(d.counts[id])+'회</strong><em>'+(d.programChanges[i]===null?'전날 비교 불가':dailyNum(d.programChanges[i])+'회')+'</em></div>').join('')+'</div>';
+  return '<article class="daily-day'+(missing?' missing':'')+'"><div class="daily-top"><div class="daily-date">'+dailyLabel(d.day)+'</div><span class="daily-chip'+cls+'">'+tag+'</span></div>'+info+
+  (d.timestamp?'<small>마지막 확인 '+when(d.timestamp)+'</small>':'')+'</article>';
+ }).join('');
+ $d('dailyTable').innerHTML=reversed.map(d=>'<tr><td>'+d.day+(d.current?' (진행 중)':'')+'</td><td>'+fmt(d.total)+'</td><td>'+dailyNum(d.delta)+'</td>'+IDs.map(id=>'<td>'+fmt(d.counts?.[id])+'</td>').join('')+'<td>'+(d.timestamp?when(d.timestamp):'기록 없음')+'</td></tr>').join('');
+ drawDailyGraph(displayed.slice(-14));
+}
+function drawDailyGraph(days){
+ const cv=document.getElementById('dailyChart');
+ if(!cv)return;
+ const ctx=cv.getContext('2d'),w=cv.clientWidth||340,h=cv.clientHeight||235,ratio=window.devicePixelRatio||1;
+ cv.width=Math.round(w*ratio);cv.height=Math.round(h*ratio);
+ ctx.setTransform(ratio,0,0,ratio,0,0);ctx.clearRect(0,0,w,h);
+ const info=document.getElementById('dailyChartInfo');
+ if(!days.length){info.textContent='일별 기록이 없습니다.';return;}
+ const valid=days.map(d=>d.delta).filter(Number.isFinite),max=Math.max(1,...valid.map(x=>Math.max(0,x))),min=Math.min(0,...valid);
+ const left=38,right=10,top=20,bottom=42,plotH=h-top-bottom,plotW=w-left-right;
+ for(let i=0;i<=4;i++){const yy=top+plotH*i/4;
+  ctx.strokeStyle='#325267';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(left,yy);ctx.lineTo(w-right,yy);ctx.stroke();
+  ctx.fillStyle='#9dbbc8';ctx.font='11px sans-serif';ctx.textAlign='left';ctx.fillText(fmt(Math.round(max*(4-i)/4)),2,yy+3);
+ }
+ const gap=4,cell=plotW/days.length,bw=Math.min(30,cell-gap);
+ days.forEach((d,i)=>{
+  const x=left+i*cell+(cell-bw)/2,yBase=top+plotH;
+  const v=d.delta;
+  if(v===null||!Number.isFinite(v)){
+   ctx.fillStyle='#40556b';ctx.fillRect(x,yBase-5,bw,5);
+  }else{
+   const bh=Math.max(v===0?3:6,Math.min(plotH,Math.max(0,v)/max*plotH));
+   ctx.fillStyle=d.current?'#f4d18b':v<0?'#fa9da9':'#80e8bf';
+   ctx.fillRect(x,yBase-bh,bw,bh);
+  }
+  const label=d.day.slice(5).replace('-','.');
+  ctx.fillStyle='#b1c8d3';ctx.font='10px sans-serif';ctx.textAlign='center';
+  if(days.length<=7||i%Math.ceil(days.length/7)===0||i===days.length-1)ctx.fillText(label,left+cell*(i+.5),h-16);
+ });
+ info.textContent='일별 전날 대비 증가량 (회) · 노란색은 오늘 진행 중 · 회색은 비교 불가';
+}
 
 function renderSlots(records){
  const M=1800000, grouped=new Map();
