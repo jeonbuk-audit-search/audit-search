@@ -111,6 +111,7 @@ school = st.sidebar.text_input("학교명", value=st.session_state.get("school",
 st.session_state["school"] = school
 dept_filter = st.sidebar.multiselect("부서", DEPTS, default=DEPTS)
 today = st.sidebar.date_input("기준 날짜", value=date.today())
+alert_days = st.sidebar.slider("마감 임박 알림(일 전)", 1, 30, 7)
 st.sidebar.info(
     "⚠️ 인계서에는 주민번호·계좌번호·비밀번호 등 개인정보를 입력하지 마세요. "
     "증빙은 '위치(문서번호·폴더 경로)'만 적습니다."
@@ -130,6 +131,40 @@ tasks = pd.read_sql_query(
 )
 
 st.title(f"📋 {school} 업무 인수인계")
+
+def collect_alerts():
+    """이번 주기에 아직 끝나지 않은 업무 중 기한이 지났거나 임박한 것."""
+    over, soon, daily_left = [], [], 0
+    for _, t in tasks.iterrows():
+        if not is_active(t, today):
+            continue
+        r = con.execute("SELECT status FROM logs WHERE task_id=? AND period=?",
+                        (int(t["id"]), period_key(t["cycle"], today))).fetchone()
+        if r and r["status"] in ("완료", "해당없음"):
+            continue
+        if t["cycle"] == "일":
+            daily_left += 1
+            continue
+        dday = (due_date(t, today) - today).days
+        item = (dday, t["dept"], t["title"], t["cycle"])
+        if dday < 0:
+            over.append(item)
+        elif dday <= alert_days:
+            soon.append(item)
+    return sorted(over), sorted(soon), daily_left
+
+
+over, soon, daily_left = collect_alerts()
+if over:
+    st.error("🚨 **기한 초과 {}건** — ".format(len(over)) + " / ".join(
+        f"[{d}] {t} (D+{-dd})" for dd, d, t, c in over))
+if soon:
+    st.warning("⏰ **{}일 이내 마감 {}건** — ".format(alert_days, len(soon)) + " / ".join(
+        f"[{d}] {t} ({'오늘' if dd == 0 else f'D-{dd}'})" for dd, d, t, c in soon))
+if daily_left:
+    st.info(f"📌 오늘 아직 처리하지 않은 일별 업무 {daily_left}건")
+st.sidebar.metric("기한 초과 / 임박", f"{len(over)} / {len(soon)}")
+
 tab_today, tab_cards, tab_handover = st.tabs(["✅ 주기별 업무", "🗂️ 업무 카드 관리", "📄 인수인계서"])
 
 # ---------- 탭1: 주기별 업무 ----------
@@ -236,9 +271,37 @@ with tab_cards:
         view = tasks[["id", "dept", "role", "title", "cycle", "months", "due_day", "keywords"]]
         view.columns = ["ID", "부서", "역할", "업무명", "주기", "시기(월)", "기한(일)", "감사키워드"]
         st.dataframe(view, width="stretch", hide_index=True)
-        del_id = st.number_input("삭제할 카드 ID", 0, step=1)
-        if st.button("🗑️ 삭제") and del_id:
-            con.execute("DELETE FROM tasks WHERE id=? AND school=?", (int(del_id), school))
+
+        st.subheader("업무 카드 수정·삭제")
+        opts = {int(r["id"]): f"[{r['dept']}/{r['cycle']}] {r['title']}" for _, r in tasks.iterrows()}
+        sel = st.selectbox("카드 선택", list(opts), format_func=lambda k: opts[k])
+        t = tasks[tasks["id"] == sel].iloc[0]
+        with st.form(f"edit_{sel}"):
+            a, b, c_ = st.columns(3)
+            e_dept = a.selectbox("부서", DEPTS, index=DEPTS.index(t["dept"]) if t["dept"] in DEPTS else 0)
+            e_cycle = b.selectbox("주기", CYCLES, index=CYCLES.index(t["cycle"]))
+            e_role = c_.text_input("담당 역할(직위)", value=t["role"] or "")
+            e_title = st.text_input("업무명", value=t["title"])
+            d1, d2 = st.columns(2)
+            e_months = d1.text_input("시기(월) — 분기·년만", value=t["months"] or "")
+            e_due = d2.number_input("기한(일) — 0이면 말일", 0, 31, int(t["due_day"] or 0))
+            e_basis = st.text_input("근거 법령·지침", value=t["basis"] or "")
+            e_proc = st.text_area("처리 절차", value=t["procedure"] or "")
+            e_sys = st.text_input("사용 시스템", value=t["systems"] or "")
+            e_kw = st.text_input("감사 키워드(쉼표 구분)", value=t["keywords"] or "")
+            e_notes = st.text_area("유의사항", value=t["notes"] or "")
+            if st.form_submit_button("💾 수정 저장") and e_title.strip():
+                con.execute(
+                    "UPDATE tasks SET dept=?,role=?,title=?,cycle=?,months=?,due_day=?,basis=?,procedure=?,"
+                    "systems=?,keywords=?,notes=? WHERE id=? AND school=?",
+                    (e_dept, e_role or e_dept, e_title, e_cycle, e_months, int(e_due), e_basis, e_proc,
+                     e_sys, e_kw, e_notes, sel, school))
+                con.commit()
+                st.success("수정했습니다.")
+                st.rerun()
+        if st.checkbox("삭제하려면 체크", key=f"delchk{sel}") and st.button("🗑️ 선택한 카드 삭제"):
+            con.execute("DELETE FROM tasks WHERE id=? AND school=?", (sel, school))
+            con.execute("DELETE FROM logs WHERE task_id=?", (sel,))
             con.commit()
             st.rerun()
 
