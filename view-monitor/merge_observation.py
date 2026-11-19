@@ -40,12 +40,15 @@ def main():
     CSV.parent.mkdir(parents=True, exist_ok=True)
     with CSV.open("w", encoding="utf-8-sig", newline="") as fp:
         writer = csv.writer(fp)
-        writer.writerow(["확인시각(KST)"] + [x["name"] for x in data["items"]] + ["합계", "상태", "오류"])
+        writer.writerow(["확인시각(KST)"] + [x["name"] for x in data["items"]] + ["합계", "집계 기준", "상태", "오류"])
         for r in records:
             values = [r.get("counts", {}).get(k) for k in ids]
-            total = sum(values) if all(isinstance(v, int) for v in values) else ""
-            writer.writerow([r["timestamp"], *values, total, r.get("status", ""),
-                             " / ".join(r.get("errors", []))])
+            valid_old = all(isinstance(v, int) for v in values[:4])
+            count = sum(isinstance(v, int) for v in values)
+            basis = count if r.get("status") == "ok" and valid_old and count in (4, 5) else 0
+            total = sum(v for v in values if isinstance(v, int)) if basis else ""
+            writer.writerow([r["timestamp"], *values, total, f"{basis}개" if basis else "",
+                             r.get("status", ""), " / ".join(r.get("errors", []))])
     print(f"Merged observation {obs['timestamp']}; total history rows={len(records)}")
 
 if __name__ == "__main__":
