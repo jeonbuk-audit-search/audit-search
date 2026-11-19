@@ -303,28 +303,36 @@ function downloadDailyCsv(){
 function renderDaily(){
  const all=getDailyRecords(history.records),select=document.getElementById('dailyRange');
  const n=select?.value==='all'?all.length:Number(select?.value||7);
- const displayed=all.slice(-n),today=kstDay(new Date().toISOString()),current=all.find(d=>d.day===today),yesterday=all.find(d=>d.day===shiftDay(today,-1));
+ const displayed=all.slice(-n),today=kstDay(new Date().toISOString());
+ const current=all.find(d=>d.day===today),yesterday=all.find(d=>d.day===shiftDay(today,-1));
  const $d=id=>document.getElementById(id);
  $d('dailyToday').textContent=dailyGrowth(current?.delta??null);
  $d('dailyYesterday').textContent=dailyGrowth(yesterday?.delta??null);
  $d('dailyDays').textContent=all.filter(d=>!d.missing).length+'일';
  if(!displayed.length){
-  $d('dailyCards').textContent='아직 성공한 수집 기록이 없습니다.';
-  $d('dailyTable').innerHTML='<tr><td colspan="8">기록 없음</td></tr>';
-  drawDailyGraph([]);return;
+   $d('dailyCards').textContent='아직 성공한 수집 기록이 없습니다.';
+   $d('dailyTable').innerHTML='<tr><td colspan="10">기록 없음</td></tr>';
+   drawDailyGraph([]);return;
  }
- const compact=['학교회계','감사ON','계약실무','AI 공작소'];
+ const compact=['학교회계','감사ON','계약실무','AI 공작소','법령ON'];
  const reversed=[...displayed].reverse();
  $d('dailyCards').innerHTML=reversed.map(d=>{
-  const missing=d.missing,tag=missing?'기록 없음':d.current?'진행 중':'마지막 기록';
+  const missing=d.missing;
+  const label=missing?'기록 없음':(d.current?'진행 중 · ':'')+d.basis+'개 기준';
   const cls=missing?' missing':d.current?' partial':'';
-  const info=missing?'<p style="font-size:13px;color:#a9c8d6">이 날짜에 확인된 수집 기록이 없습니다.</p>':
-   '<div class="daily-total">'+fmt(d.total)+'회</div><div class="daily-increase">'+(d.delta===null?'전날 기록이 없어 비교할 수 없습니다':'전날 마지막 기록 대비 '+dailyNum(d.delta)+'회')+'</div>'+
-   '<div class="daily-programs">'+IDs.map((id,i)=>'<div class="daily-program"><label>'+compact[i]+'</label><strong style="color:'+COLORS[i]+'">'+fmt(d.counts[id])+'회</strong><em>'+(d.programChanges[i]===null?'전날 비교 불가':dailyNum(d.programChanges[i])+'회')+'</em></div>').join('')+'</div>';
-  return '<article class="daily-day'+(missing?' missing':'')+'"><div class="daily-top"><div class="daily-date">'+dailyLabel(d.day)+'</div><span class="daily-chip'+cls+'">'+tag+'</span></div>'+info+
-  (d.timestamp?'<small>마지막 확인 '+when(d.timestamp)+'</small>':'')+'</article>';
+  let info='';
+  if(missing){info='<p style="font-size:13px;color:#a9c8d6">이 날짜에 확인된 수집 기록이 없습니다.</p>';}
+  else {
+   const comparison=d.delta===null?(d.priorBasis&&d.basis!==d.priorBasis?'전날과 집계 대상이 달라 총합 비교를 생략합니다':'전날 기록이 없어 총합 비교를 생략합니다'):'전날 같은 기준 마지막 기록 대비 '+dailyNum(d.delta)+'회';
+   info='<div class="daily-total">'+fmt(d.total)+'회 <small>('+d.basis+'개 합계)</small></div><div class="daily-increase">'+comparison+'</div>'+
+    '<div class="daily-programs">'+IDs.map((id,i)=>{
+      const v=d.counts?.[id],change=d.programChanges[i];
+      return '<div class="daily-program"><label>'+compact[i]+'</label><strong style="color:'+COLORS[i]+'">'+(Number.isInteger(v)?fmt(v)+'회':'미집계')+'</strong><em>'+(change===null?'전날 비교 불가':dailyNum(change)+'회')+'</em></div>';
+    }).join('')+'</div>';
+  }
+  return '<article class="daily-day'+(missing?' missing':'')+'"><div class="daily-top"><div class="daily-date">'+dailyLabel(d.day)+'</div><span class="daily-chip'+cls+'">'+label+'</span></div>'+info+(d.timestamp?'<small>마지막 확인 '+when(d.timestamp)+'</small>':'')+'</article>';
  }).join('');
- $d('dailyTable').innerHTML=reversed.map(d=>'<tr><td>'+d.day+(d.current?' (진행 중)':'')+'</td><td>'+fmt(d.total)+'</td><td>'+dailyNum(d.delta)+'</td>'+IDs.map(id=>'<td>'+fmt(d.counts?.[id])+'</td>').join('')+'<td>'+(d.timestamp?when(d.timestamp):'기록 없음')+'</td></tr>').join('');
+ $d('dailyTable').innerHTML=reversed.map(d=>'<tr><td>'+d.day+(d.current?' (진행 중)':'')+'</td><td>'+fmt(d.total)+'</td><td>'+dailyNum(d.delta)+'</td>'+IDs.map(id=>'<td>'+fmt(d.counts?.[id])+'</td>').join('')+'<td>'+(d.timestamp?when(d.timestamp):'기록 없음')+'</td><td>'+(d.basis?d.basis+'개':'—')+'</td></tr>').join('');
  drawDailyGraph(displayed.slice(-14));
 }
 function drawDailyGraph(days){
