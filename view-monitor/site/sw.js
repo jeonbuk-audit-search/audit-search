@@ -1,5 +1,5 @@
 /* Big Bowl Studio PWA service worker: app-shell only, NEVER cache view-count JSON. */
-const CACHE_NAME = 'bigbowl-live-shell-v1';
+const CACHE_NAME = 'bigbowl-live-shell-v2';
 const SCOPE = self.registration.scope;
 const APP_FILES = ['index.html','manifest.webmanifest','icon-192.png','icon-512.png'].map(f => new URL(f,SCOPE).href);
 self.addEventListener('install', event => {
