@@ -198,23 +198,47 @@ async function load(){
   $('errmsg').textContent='새 기록 연결에 실패했습니다. '+errors.join(' / ');
  }
 }
-function render(){let all=history.records,good=all.filter(x=>sum(x)!==null).sort((a,b)=>a.timestamp.localeCompare(b.timestamp));let last=good.at(-1),prev=good.at(-2),ref=!last?{counts:history.baseline?.counts}:null,disp=last||ref;let age=last?Math.round((Date.now()-new Date(last.timestamp).getTime())/60000):null;let stale=age!==null&&age>45;let warning=$('stale');warning.hidden=!stale;warning.innerHTML=stale?'마지막 조회가 '+age+'분 전입니다. 예약 수집이 지연됐을 수 있습니다. <a href="https://github.com/jeonbuk-audit-search/audit-search/actions/workflows/view-monitor.yml" target="_blank" rel="noopener">지금 GitHub에서 수집 실행</a> 후 다시 불러오세요.':'';
-$('total').textContent=fmt(sum(disp))+'회';$('state').textContent=!all.length?'자동 수집 시작 전':all.at(-1)?.status==='ok'?stale?'수집 지연 '+age+'분':'최근 수집 정상':'최근 수집 실패/일부 실패';
-const sourceLabels={schedule:'정기 자동 실행',workflow_dispatch:'수동 실행',push:'코드 변경 후 실행',manual_verified_public_listing:'게시판 직접 확인'}; 
-$('checked').textContent=last?'마지막 확인: '+when(last.timestamp)+' ('+(sourceLabels[last.source]||'수집 방식 미표시')+')':'2026-11-14 확인한 초기 참고값 (실시간 갱신 아님)';
-$('attempts').textContent=fmt(all.length)+'회';$('change').textContent=last&&prev?delta(sum(last)-sum(prev)):'—';
-let first=last&&good.find(x=>x.timestamp.slice(0,10)===last.timestamp.slice(0,10));$('today').textContent=first&&last?delta(sum(last)-sum(first)):'—';
-$('cards').innerHTML=IDs.map((id,i)=>{let num=disp?.counts?.[id],before=prev?.counts?.[id];let d=Number.isInteger(num)&&Number.isInteger(before)?num-before:null;return '<article class="card"><small>PROGRAM '+String(i+1).padStart(2,'0')+'</small><h3>'+NAMES[i]+'</h3><strong>'+fmt(num)+'</strong><small>회</small><span class="delta">'+(d===null?'증가량 확인 대기':delta(d))+'</span><a href="https://www.jbe.go.kr/board/view.jbe?boardId=BBS_0000683&menuCd=DOM_000000106011002002&dataSid='+id+'" target="_blank" rel="noopener">교육청 원본 보기 ↗</a></article>'}).join('');
-$('history').innerHTML=all.length?[...all].reverse().slice(0,30).map(r=>'<tr><td>'+when(r.timestamp)+'</td>'+IDs.map(id=>'<td>'+fmt(r.counts?.[id])+'</td>').join('')+'<td>'+fmt(sum(r))+'</td><td>'+r.status+'</td></tr>').join(''):'<tr><td colspan="7">자동 수집 이력이 아직 없습니다.</td></tr>';
-$('csv').href=ROOT+'history.csv';const scheduled=all.filter(r=>r.source==='schedule');
+function render(){
+ const all=history.records||[];
+ const good=all.filter(x=>sum(x)!==null).sort((a,b)=>a.timestamp.localeCompare(b.timestamp));
+ const last=good.at(-1)||null;
+ const prev=last?good.filter(x=>basisCount(x)===basisCount(last)).at(-2)||null:null;
+ const ref=!last?{counts:history.baseline?.counts}:null,disp=last||ref;
+ const age=last?Math.round((Date.now()-new Date(last.timestamp).getTime())/60000):null;
+ const stale=age!==null&&age>45,warn=$('stale');
+ warn.hidden=!stale;
+ warn.innerHTML=stale?'마지막 조회가 '+age+'분 전입니다. <a href="https://github.com/jeonbuk-audit-search/audit-search/actions/workflows/view-monitor.yml" target="_blank" rel="noopener">지금 GitHub에서 수집 실행</a> 후 다시 불러오세요.':'';
+ const basis=basisCount(disp);
+ $('totalBasis').textContent=basis?basis+'개 기준':'기록 없음';
+ $('compareNote').textContent=basis===5?'법령ON 추가 후 5개 합계입니다. 이전 4개 합계와 직접 비교하지 않습니다.':'과거 4개 프로그램 기준입니다. 법령ON 추가 이전에는 해당 조회수가 수집되지 않았습니다.';
+ $('total').textContent=fmt(sum(disp))+'회';
+ $('state').textContent=!all.length?'자동 수집 시작 전':all.at(-1)?.status==='ok'?(stale?'수집 지연 '+age+'분':'최근 수집 정상'):'최근 수집 실패/일부 실패';
+ const sourceLabels={schedule:'정기 자동 실행',workflow_dispatch:'수동 실행',push:'코드 변경 후 실행',manual_verified_public_listing:'게시판 직접 확인'};
+ $('checked').textContent=last?'마지막 확인: '+when(last.timestamp)+' ('+(sourceLabels[last.source]||'수집 방식 미표시')+')':'초기 참고값 (실시간 갱신 아님)';
+ $('attempts').textContent=fmt(all.length)+'회';
+ $('change').textContent=last&&prev?delta(sum(last)-sum(prev)):'—';
+ const first=last?good.find(x=>kstDay(x.timestamp)===kstDay(last.timestamp)&&basisCount(x)===basisCount(last)):null;
+ $('today').textContent=first&&last?delta(sum(last)-sum(first)):'—';
+ $('cards').innerHTML=IDs.map((id,i)=>{
+   const num=disp?.counts?.[id],before=prev?.counts?.[id];
+   const d=Number.isInteger(num)&&Number.isInteger(before)?num-before:null;
+   const quantity=Number.isInteger(num)?fmt(num):'미집계';
+   const suffix=Number.isInteger(num)?'회':'';
+   return '<article class="card"><small>PROGRAM '+String(i+1).padStart(2,'0')+'</small><h3>'+NAMES[i]+'</h3><strong>'+quantity+'</strong><small>'+suffix+'</small><span class="delta">'+(d===null?'동일 기준 이전 기록 없음':delta(d))+'</span><a href="https://www.jbe.go.kr/board/view.jbe?boardId=BBS_0000683&menuCd=DOM_000000106011002002&dataSid='+id+'" target="_blank" rel="noopener">교육청 원본 보기 ↗</a></article>';
+ }).join('');
+ $('history').innerHTML=all.length?[...all].reverse().slice(0,30).map(r=>'<tr><td>'+when(r.timestamp)+'</td>'+IDs.map(id=>'<td>'+fmt(r.counts?.[id])+'</td>').join('')+'<td>'+fmt(sum(r))+'</td><td>'+(basisCount(r)?basisCount(r)+'개':'—')+'</td><td>'+r.status+'</td></tr>').join(''):'<tr><td colspan="9">수집 이력이 아직 없습니다.</td></tr>';
+ $('csv').href=ROOT+'history.csv';
+ const scheduled=all.filter(r=>r.source==='schedule'&&r.status==='ok');
  const scheduleText=$('scheduleStatus');
  if(scheduleText){
-  const lastScheduled=scheduled.at(-1);
-  const schedAge=lastScheduled?Math.max(0,Math.floor((Date.now()-new Date(lastScheduled.timestamp))/60000)):null;
-  scheduleText.textContent=lastScheduled?'정기 자동 수집 성공 '+scheduled.length+'회 · 최근 정기 실행 '+when(lastScheduled.timestamp)+(schedAge>60?' · 정기 실행이 '+schedAge+'분 전입니다.':' · 약 30분 목표 (보장되지 않음)'):'정기 자동 수집 이력 없음 · 설정 변경·수동 실행과 구분해서 표시';
+   const recent=scheduled.at(-1),mins=recent?Math.max(0,Math.floor((Date.now()-new Date(recent.timestamp))/60000)):null;
+   scheduleText.textContent=recent?'정기 자동 수집 성공 '+scheduled.length+'회 · 최근 정기 실행 '+when(recent.timestamp)+(mins>60?' · 정기 실행 '+mins+'분 전':' · 약 30분 목표 (보장되지 않음)'):'정기 자동 수집 이력 없음 · 수동 실행/화면 수정과 구분';
  }
- const note=$('schedule-note');note.hidden=scheduled.length>0;note.textContent=scheduled.length? '':'30분은 예약 설정 간격입니다. 현재 저장된 기록에는 정기 예약 실행(schedule) 성공 이력이 없습니다. 수동 실행이나 화면 수정으로 생성한 기록도 포함됩니다.';renderDaily();renderSlots(all);draw(good)}
-
+ const note=$('schedule-note');
+ note.hidden=scheduled.length>0;
+ note.textContent=scheduled.length?'':'30분은 예약 설정 간격입니다. 아직 정기 예약 실행 성공 기록이 없습니다.';
+ renderDaily();renderSlots(all);draw(good);
+}
 
 /** Daily cumulative counts from the last COMPLETE successful snapshot for each Korean calendar day.
  * Missing days are represented explicitly, never interpolated or counted as zero.
