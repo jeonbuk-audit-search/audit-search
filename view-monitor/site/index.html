@@ -13,7 +13,7 @@
 :root{font-family:system-ui,"Malgun Gothic",sans-serif;color:#edf9ff;background:#0a1625}
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 75% 0%,#16475a,transparent 55%),#0a1625;min-height:100vh}
 main{max-width:1150px;padding:28px 16px 72px;margin:auto}.eyebrow{color:#87eabb;font-size:12px;font-weight:800;letter-spacing:2px}h1{font-size:clamp(27px,6vw,42px);margin:8px 0 4px;letter-spacing:-1.5px}p,small{color:#a5bfcc}small{font-size:12px}.top{display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap}.status{border:1px solid #436275;padding:8px 12px;border-radius:100px;color:#c5d7e3;font-size:12px}
-.hero{background:linear-gradient(135deg,#193c4f,#142a40);border:1px solid #33556a;border-radius:22px;padding:25px;margin:25px 0;display:grid;grid-template-columns:1.3fr 1fr;gap:15px}.total{font-size:clamp(42px,9vw,72px);font-weight:850;letter-spacing:-3px}.metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px}.metric,.card,.panel{background:#13283c;border:1px solid #315165;border-radius:16px;padding:16px}.metric b{display:block;font-size:22px;margin-top:5px}.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.card{border-top:3px solid #77e9bd}.card:nth-child(2){border-color:#f6a6c7}.card:nth-child(3){border-color:#87bdff}.card:nth-child(4){border-color:#f4d18b}.card h3{font-size:15px;min-height:46px}.card strong{font-size:35px;letter-spacing:-1px}.card a{color:#a2d5ff;text-decoration:underline;font-size:12px}.delta{display:block;color:#87eabb;font-size:12px;margin:8px 0 16px}.panel{margin-top:20px}.panel h2{font-size:19px;margin:0 0 15px}.buttons{display:flex;gap:10px;flex-wrap:wrap;margin:20px 0}button,.btn{background:#234b62;border:1px solid #477187;border-radius:10px;padding:11px 15px;color:white;text-decoration:none;cursor:pointer;font-weight:700}button:hover,.btn:hover{background:#35647b}.btn.primary{background:#7de9bd;color:#0a2532;border:0}#chart{height:270px;width:100%;display:block}.tablewrap{overflow:auto}table{border-collapse:collapse;width:100%;min-width:650px;font-size:13px}th,td{padding:11px 8px;border-bottom:1px solid #335063;text-align:right}th:first-child,td:first-child{text-align:left}th{color:#acc7d5}footer{margin-top:28px;color:#9cb9c9;font-size:12px;line-height:1.8}#errmsg{color:#f9b4ac}.stale{background:#483922;border:1px solid #7a6237;border-radius:12px;padding:13px;margin:12px 0;color:#f5dca8;font-size:13px}.stale[hidden]{display:none}.stale a{color:#a9ddff}.legend{font-size:12px;color:#b4c8d2;margin-top:10px}.legend span{margin-right:14px}
+.hero{background:linear-gradient(135deg,#193c4f,#142a40);border:1px solid #33556a;border-radius:22px;padding:25px;margin:25px 0;display:grid;grid-template-columns:1.3fr 1fr;gap:15px}.total{font-size:clamp(42px,9vw,72px);font-weight:850;letter-spacing:-3px}.metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px}.metric,.card,.panel{background:#13283c;border:1px solid #315165;border-radius:16px;padding:16px}.metric b{display:block;font-size:22px;margin-top:5px}.cards{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}.card{border-top:3px solid #77e9bd}.card:nth-child(2){border-color:#f6a6c7}.card:nth-child(3){border-color:#87bdff}.card:nth-child(4){border-color:#f4d18b}.card:nth-child(5){border-color:#c7a6ff}.card h3{font-size:15px;min-height:46px}.card strong{font-size:35px;letter-spacing:-1px}.card a{color:#a2d5ff;text-decoration:underline;font-size:12px}.delta{display:block;color:#87eabb;font-size:12px;margin:8px 0 16px}.panel{margin-top:20px}.panel h2{font-size:19px;margin:0 0 15px}.buttons{display:flex;gap:10px;flex-wrap:wrap;margin:20px 0}button,.btn{background:#234b62;border:1px solid #477187;border-radius:10px;padding:11px 15px;color:white;text-decoration:none;cursor:pointer;font-weight:700}button:hover,.btn:hover{background:#35647b}.btn.primary{background:#7de9bd;color:#0a2532;border:0}#chart{height:270px;width:100%;display:block}.tablewrap{overflow:auto}table{border-collapse:collapse;width:100%;min-width:650px;font-size:13px}th,td{padding:11px 8px;border-bottom:1px solid #335063;text-align:right}th:first-child,td:first-child{text-align:left}th{color:#acc7d5}footer{margin-top:28px;color:#9cb9c9;font-size:12px;line-height:1.8}#errmsg{color:#f9b4ac}.stale{background:#483922;border:1px solid #7a6237;border-radius:12px;padding:13px;margin:12px 0;color:#f5dca8;font-size:13px}.stale[hidden]{display:none}.stale a{color:#a9ddff}.legend{font-size:12px;color:#b4c8d2;margin-top:10px}.legend span{margin-right:14px}
 .slotboard{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:16px}
 .slot{background:#193449;border:1px solid #35596b;border-radius:15px;padding:16px;min-width:0}
 .slot.missing{background:#14293a;border-style:dashed;color:#a5bfcc}
@@ -67,21 +67,23 @@ main{max-width:1150px;padding:28px 16px 72px;margin:auto}.eyebrow{color:#87eabb;
 .daily-table th,.daily-table td{white-space:nowrap}
 @media(max-width:850px){.daily-cards{grid-template-columns:1fr}}
 @media(max-width:450px){.daily-stats{gap:6px}.daily-stat{padding:11px 8px}.daily-stat small{font-size:10px}.daily-stat strong{font-size:20px}.daily-day{padding:13px}}
+.basis-note{display:block;color:#a5c7d9;margin-top:10px;font-size:12px;line-height:1.6}
+@media(max-width:800px){.cards .card:last-child:nth-child(odd){grid-column:span 2}}
 </style></head><body><main>
-<div class="top"><div><div class="eyebrow">BIG BOWL STUDIO · VIEW MONITOR</div><h1>큰그릇실장 <span style="color:#7de9bd">조회수 LIVE</span></h1><p>전북특별자치도교육청 · 내가 만든 프로그램 4종</p></div><span class="status" id="state">기록 확인 중</span></div>
+<div class="top"><div><div class="eyebrow">BIG BOWL STUDIO · VIEW MONITOR</div><h1>큰그릇실장 <span style="color:#7de9bd">조회수 LIVE</span></h1><p>전북특별자치도교육청 · 내가 만든 프로그램 5종</p></div><span class="status" id="state">기록 확인 중</span></div>
 <div class="installbar" id="installbar">
   <div><strong>📲 홈 화면에 설치하는 웹앱</strong><div class="hint">설치 후에도 최신 기록은 GitHub에서 불러옵니다.</div></div>
   <button class="installbtn" id="installBtn" type="button" onclick="installApp()">홈 화면에 설치</button>
 </div>
 <div id="installHelp" class="installhelp" hidden></div>
 <div id="stale" class="stale" hidden></div>
-<section class="hero"><div><small>네 프로그램의 누적 조회수 합계</small><div class="total" id="total">—</div><small id="checked">최근 확인 기록을 불러오는 중</small></div><div class="metrics"><div class="metric"><small>이전 수집 대비</small><b id="change">—</b></div><div class="metric"><small>오늘 증가량</small><b id="today">—</b></div><div class="metric"><small>기록 횟수</small><b id="attempts">—</b></div><div class="metric"><small>예약 설정 간격</small><b>30분</b></div></div></section>
+<section class="hero"><div><small>프로그램 누적 조회수 합계 (<span id="totalBasis">확인 중</span>)</small><div class="total" id="total">—</div><small id="checked">최근 확인 기록을 불러오는 중</small><small id="compareNote" class="basis-note"></small></div><div class="metrics"><div class="metric"><small>같은 기준 이전 수집 대비</small><b id="change">—</b></div><div class="metric"><small>오늘 같은 기준 증가량</small><b id="today">—</b></div><div class="metric"><small>기록 횟수</small><b id="attempts">—</b></div><div class="metric"><small>예약 설정 간격</small><b>30분</b></div></div></section>
 <div class="scheduleline" id="scheduleStatus">정기 예약 실행 여부 확인 중…</div>
 <div class="buttons"><button class="btn primary" onclick="load()">↻ 저장 기록 불러오기</button><a class="btn" href="https://github.com/jeonbuk-audit-search/audit-search/actions/workflows/view-monitor.yml" target="_blank" rel="noopener">↗ 지금 수집 실행</a><a id="csv" class="btn" target="_blank" rel="noopener">↓ 이력 CSV</a><button onclick="downloadHistory()">↓ JSON 저장</button></div>
 <div class="cards" id="cards"></div>
 <div id="schedule-note" class="stale" hidden></div><section class="panel" id="daily">
   <div class="daily-head">
-    <div><h2>일별 누적 카운팅</h2><small>한국 시간(KST) 기준 · 날짜별 마지막 성공 기록과 전일 대비 증가량</small></div>
+    <div><h2>일별 누적 카운팅</h2><small>한국 시간(KST) 기준 · 날짜별 마지막 성공 기록과 전일 대비 증가량 · 4개·5개 기준 구분</small></div>
     <div class="daily-actions">
       <select id="dailyRange" class="daily-select" aria-label="조회 기간" onchange="renderDaily()">
         <option value="7">최근 7일</option><option value="30">최근 30일</option><option value="all">전체 기록</option>
@@ -95,24 +97,25 @@ main{max-width:1150px;padding:28px 16px 72px;margin:auto}.eyebrow{color:#87eabb;
     <div class="daily-stat"><small>기록된 날짜</small><strong id="dailyDays">—</strong></div>
   </div>
   <canvas id="dailyChart" role="img" aria-label="날짜별 조회수 증가 추이"></canvas>
-  <small id="dailyChartInfo">전날과 당일에 모두 수집 기록이 있을 때만 증가량을 계산합니다.</small>
+  <small id="dailyChartInfo">전날과 당일의 집계 대상이 같을 때만 합계 증가량을 계산합니다.</small>
   <div class="daily-cards" id="dailyCards" aria-live="polite"><p>일별 기록을 불러오는 중…</p></div>
   <details class="rawdetails"><summary>날짜별 전체 수치를 표로 보기</summary>
     <div class="tablewrap">
-      <table class="daily-table"><thead><tr><th>날짜</th><th>누적 합계</th><th>전날 대비</th><th>학교회계 누적</th><th>감사ON 누적</th><th>계약실무 누적</th><th>AI 공작소 누적</th><th>마지막 확인</th></tr></thead>
+      <table class="daily-table"><thead><tr><th>날짜</th><th>누적 합계</th><th>전날 대비</th><th>학교회계 누적</th><th>감사ON 누적</th><th>계약실무 누적</th><th>AI 공작소 누적</th><th>법령ON 누적</th><th>마지막 확인</th><th>집계 기준</th></tr></thead>
       <tbody id="dailyTable"></tbody></table>
     </div>
   </details>
   <p class="daily-foot">* 각 날짜에 마지막으로 확인된 누적 조회수를 사용합니다. 전날과 당일 기록을 비교한 증가량으로, 하루의 정확한 0시~24시 조회수를 뜻하지는 않습니다. 오늘은 진행 중인 수치이며, 수집이 없던 날은 ‘기록 없음’으로 표시합니다.</p>
 </section>
 <section class="panel"><h2>시간별 조회수 증가 추이</h2><small>첫 확인값 대비 증가량입니다. 실제 확인한 시점만 연결합니다.</small><canvas id="chart"></canvas><div class="legend" id="legend"></div><small id="chartinfo">확인된 자동 수집 기록이 2회 이상 쌓이면 표시됩니다.</small></section>
-<section class="panel"><h2>30분 단위 조회 현황</h2><small>00~29분과 30~59분 구간으로 묶었습니다. 확인하지 않은 구간에는 숫자를 넣지 않습니다.</small><div id="slotboard" class="slotboard" aria-live="polite"></div><details class="rawdetails"><summary>전체 원본 수집 기록 펼쳐보기</summary><div class="tablewrap"><table><thead><tr><th>확인 시간(KST)</th><th>학교회계</th><th>감사ON</th><th>계약실무</th><th>AI 공작소</th><th>합계</th><th>상태</th></tr></thead><tbody id="history"><tr><td colspan="7">기록을 불러오는 중…</td></tr></tbody></table></div></details></section>
+<section class="panel"><h2>30분 단위 조회 현황</h2><small>00~29분과 30~59분 구간으로 묶었습니다. 확인하지 않은 구간에는 숫자를 넣지 않습니다.</small><div id="slotboard" class="slotboard" aria-live="polite"></div><details class="rawdetails"><summary>전체 원본 수집 기록 펼쳐보기</summary><div class="tablewrap"><table><thead><tr><th>확인 시간(KST)</th><th>학교회계</th><th>감사ON</th><th>계약실무</th><th>AI 공작소</th><th>법령ON</th><th>합계</th><th>집계 기준</th><th>상태</th></tr></thead><tbody id="history"><tr><td colspan="9">기록을 불러오는 중…</td></tr></tbody></table></div></details></section>
 <footer id="errmsg"></footer><footer>자료 출처: 전북특별자치도교육청 「교직원 제작 도구」 게시판 목록의 조회수. 방문자 수·다운로드 수와 다릅니다. 자동 수집에 실패한 경우 마지막 성공값을 새로운 조회수로 기록하지 않습니다. GitHub Actions 예약 실행은 실제 시각이 지연될 수 있습니다.</footer>
 </main><script>
 const ROOT='https://raw.githubusercontent.com/jeonbuk-audit-search/audit-search/main/view-monitor/data/';
-const IDs=['1200294','1204144','1210880','1212154'];
-const NAMES=['학교회계 운영지침·감사사례','감사ON','계약실무 길잡이','늙크크 AI 공작소'];
-const COLORS=['#77e9bd','#f6a6c7','#87bdff','#f4d18b'];
+const IDs=['1200294','1204144','1210880','1212154','1214606'];
+const LEGACY_IDS=IDs.slice(0,4);
+const NAMES=['학교회계 운영지침·감사사례','감사ON','계약실무 길잡이','늙크크 AI 공작소','법령ON'];
+const COLORS=['#77e9bd','#f6a6c7','#87bdff','#f4d18b','#c7a6ff'];
 let installPrompt=null;
 window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();installPrompt=event;document.getElementById('installBtn').textContent='앱 설치하기';});
 window.addEventListener('appinstalled',()=>{installPrompt=null;const el=document.getElementById('installbar');if(el)el.hidden=true;});
@@ -130,7 +133,12 @@ async function installApp(){
 }
 
 const fmt=x=>Number.isInteger(x)?x.toLocaleString('ko-KR'):'—';
-const sum=r=>r&&IDs.every(id=>Number.isInteger(r.counts?.[id]))?IDs.reduce((a,id)=>a+r.counts[id],0):null;
+const hasLawON=r=>Number.isInteger(r?.counts?.['1214606']);
+const basisCount=r=>r&&LEGACY_IDS.every(id=>Number.isInteger(r.counts?.[id]))?(hasLawON(r)?5:4):0;
+const sum=r=>{
+ if(!r||(r.status&&r.status!=='ok')||!basisCount(r))return null;
+ return LEGACY_IDS.reduce((n,id)=>n+r.counts[id],0)+(hasLawON(r)?r.counts['1214606']:0);
+};
 const $=id=>document.getElementById(id);
 let history={records:[]};
 const when=s=>s?new Date(s).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'}):'—';
