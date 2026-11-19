@@ -368,23 +368,34 @@ function drawDailyGraph(days){
 }
 
 function renderSlots(records){
- const M=1800000, grouped=new Map();
+ const M=1800000,grouped=new Map();
  const sorted=[...records].sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
- sorted.forEach(r=>{const time=new Date(r.timestamp).getTime();if(!Number.isFinite(time))return;const k=Math.floor(time/M)*M;if(!grouped.has(k))grouped.set(k,[]);grouped.get(k).push(r)});
+ sorted.forEach(r=>{
+   const time=new Date(r.timestamp).getTime();
+   if(!Number.isFinite(time))return;
+   const k=Math.floor(time/M)*M;
+   if(!grouped.has(k))grouped.set(k,[]);
+   grouped.get(k).push(r);
+ });
  if(!grouped.size){$('slotboard').textContent='수집 이력이 없습니다.';return}
  const keys=[...grouped.keys()],latest=Math.max(keys.at(-1),Math.floor(Date.now()/M)*M),oldest=keys[0];
  const range=t=>new Date(t).toLocaleString('ko-KR',{timeZone:'Asia/Seoul',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false})+' ~ '+new Date(t+M-60000).toLocaleTimeString('ko-KR',{timeZone:'Asia/Seoul',hour:'2-digit',minute:'2-digit',hour12:false});
- const labels=['학교회계','감사ON','계약실무','AI 공작소'];
+ const labels=['학교회계','감사ON','계약실무','AI 공작소','법령ON'];
  const escapeHtml=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- let cards=[];
+ const cards=[];
  for(let t=latest;t>=oldest&&cards.length<14;t-=M){
   const entries=grouped.get(t)||[];
-  if(!entries.length){cards.push('<article class="slot missing"><div class="slothead"><div class="slottime">'+escapeHtml(range(t))+'</div><span class="slotstatus no">기록 없음</span></div><p style="font-size:12px;margin:11px 0 0">이 시간대에 확인된 조회 기록이 없습니다.</p></article>');continue}
-  const rec=entries.at(-1),valid=sum(rec),earlier=sorted.filter(x=>new Date(x.timestamp).getTime()<t&&sum(x)!==null).at(-1);
+  if(!entries.length){
+   cards.push('<article class="slot missing"><div class="slothead"><div class="slottime">'+escapeHtml(range(t))+'</div><span class="slotstatus no">기록 없음</span></div><p style="font-size:12px;margin:11px 0 0">이 시간대에는 수집된 기록이 없습니다.</p></article>');
+   continue;
+  }
+  const rec=entries.filter(x=>sum(x)!==null).at(-1)||entries.at(-1);
+  const valid=sum(rec),basis=basisCount(rec);
+  const earlier=sorted.filter(x=>new Date(x.timestamp).getTime()<t&&sum(x)!==null&&basisCount(x)===basis).at(-1);
   const d=valid!==null&&earlier?valid-sum(earlier):null;
   const status=rec.source==='manual_verified_public_listing'?'게시판 직접 확인':rec.source==='schedule'?'정기 수집':rec.source==='workflow_dispatch'?'수동 실행':rec.source==='push'?'설정 변경 후 실행':'수집 기록';
-  const fields=IDs.map((id,i)=>'<div><label>'+labels[i]+'</label><b style="color:'+COLORS[i]+'">'+fmt(rec.counts?.[id])+'</b></div>').join('');
-  cards.push('<article class="slot"><div class="slothead"><div><div class="slottime">'+escapeHtml(range(t))+'</div><small>실제 확인: '+escapeHtml(when(rec.timestamp))+(entries.length>1?' · 해당 구간 '+entries.length+'회':'')+'</small></div><span class="slotstatus">'+status+'</span></div><div class="slotsum">'+fmt(valid)+'회</div><div class="slotdelta">'+(d===null?'이전 구간 비교 대기':'앞선 기록 대비 '+delta(d))+'</div><div class="slotvalues">'+fields+'</div></article>');
+  const fields=IDs.map((id,i)=>'<div><label>'+labels[i]+'</label><b style="color:'+COLORS[i]+'">'+(Number.isInteger(rec.counts?.[id])?fmt(rec.counts[id]):'미집계')+'</b></div>').join('');
+  cards.push('<article class="slot"><div class="slothead"><div><div class="slottime">'+escapeHtml(range(t))+'</div><small>실제 확인: '+escapeHtml(when(rec.timestamp))+(entries.length>1?' · 해당 구간 '+entries.length+'회':'')+'</small></div><span class="slotstatus">'+status+'</span></div><div class="slotsum">'+fmt(valid)+'회 <small>('+(basis?basis+'개 기준':'수집 오류')+')</small></div><div class="slotdelta">'+(d===null?'동일 집계 기준 이전 기록 없음':'앞선 동일 기준 기록 대비 '+delta(d))+'</div><div class="slotvalues">'+fields+'</div></article>');
  }
  $('slotboard').innerHTML=cards.join('');
 }
