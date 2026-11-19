@@ -265,22 +265,19 @@ function getDailyRecords(all){
   const before=byDay.get(date);
   if(!before||new Date(entry.timestamp).getTime()>new Date(before.timestamp).getTime())byDay.set(date,entry);
  }
- const recordedDays=[...byDay.keys()].sort();
- if(!recordedDays.length)return [];
+ const days=[...byDay.keys()].sort();
+ if(!days.length)return [];
  const today=kstDay(new Date().toISOString());
- const end=today>recordedDays.at(-1)?today:recordedDays.at(-1);
+ const end=today>days.at(-1)?today:days.at(-1);
  const daily=[];
- for(let date=recordedDays[0];date<=end;date=shiftDay(date,1)){
-  const latest=byDay.get(date)||null,prior=byDay.get(shiftDay(date,-1))||null;
-  const valid=latest?sum(latest):null;
-  const change=latest&&prior?valid-sum(prior):null;
-  const byProgram=IDs.map(id=>latest&&prior?latest.counts[id]-prior.counts[id]:null);
-  daily.push({
-   day:date,counts:latest?.counts||null,total:valid,delta:change,
-   programChanges:byProgram,timestamp:latest?.timestamp||null,
-   current:date===today,missing:!latest
-  });
-  // Guard against unexpectedly future-dated or corrupted records.
+ for(let day=days[0];day<=end;day=shiftDay(day,1)){
+  const latest=byDay.get(day)||null,prior=byDay.get(shiftDay(day,-1))||null;
+  const basis=basisCount(latest),priorBasis=basisCount(prior);
+  const total=latest?sum(latest):null;
+  // 4개 집계와 5개 집계의 합계를 직접 빼지 않습니다.
+  const change=latest&&prior&&basis===priorBasis?total-sum(prior):null;
+  const programChanges=IDs.map(id=>latest&&prior&&Number.isInteger(latest.counts?.[id])&&Number.isInteger(prior.counts?.[id])?latest.counts[id]-prior.counts[id]:null);
+  daily.push({day,counts:latest?.counts||null,total,delta:change,basis,priorBasis,programChanges,timestamp:latest?.timestamp||null,current:day===today,missing:!latest});
   if(daily.length>2000)break;
  }
  return daily;
@@ -292,12 +289,12 @@ function csvCell(value){const str=String(value??'');return '"'+str.replace(/"/g,
 function downloadDailyCsv(){
  const rows=getDailyRecords(history.records);
  if(!rows.length)return;
- const head=['날짜(KST)','학교회계 누적','학교회계 전일대비','감사ON 누적','감사ON 전일대비','계약실무 누적','계약실무 전일대비','AI 공작소 누적','AI 공작소 전일대비','누적 합계','전날 대비 증가','마지막 확인(KST)','구분'];
+ const head=['날짜(KST)','학교회계 누적','학교회계 전일대비','감사ON 누적','감사ON 전일대비','계약실무 누적','계약실무 전일대비','AI 공작소 누적','AI 공작소 전일대비','법령ON 누적','법령ON 전일대비','누적 합계','전날 대비 증가','마지막 확인(KST)','집계 프로그램 수','구분'];
  const lines=[head.map(csvCell).join(',')];
  for(const d of rows){
   const vals=[d.day];
   IDs.forEach((id,i)=>vals.push(d.counts?.[id]??'',d.programChanges[i]??''));
-  vals.push(d.total??'',d.delta??'',d.timestamp??'',d.missing?'기록 없음':d.current?'진행 중':'마지막 기록');
+  vals.push(d.total??'',d.delta??'',d.timestamp??'',d.basis?d.basis+'개':'',d.missing?'기록 없음':d.current?'진행 중':'마지막 기록');
   lines.push(vals.map(csvCell).join(','));
  }
  const blob=new Blob(['\uFEFF'+lines.join('\r\n')],{type:'text/csv;charset=utf-8;'});
