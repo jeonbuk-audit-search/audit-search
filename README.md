@@ -70,3 +70,5 @@ HANDOVER_ADMIN_PASSWORD=관리자암호 streamlit run handover_app.py   # 관리
 - PDF 한글: `fonts/NanumGothic.ttf`를 넣어 두면 어느 PC에서나 동일하게 출력
 - 표준 업무 카드: `handover_templates.csv` (학교에서 불러와 수정)
 - 외부 공개 시 https 필수. 인계서에 개인정보 입력 금지
+
+- 간편 실행: Windows는 `실행.bat` 더블클릭, 리눅스·맥은 `./run.sh` (처음 한 번 자동 설치 후 브라우저에서 열림)
