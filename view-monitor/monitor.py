@@ -139,12 +139,16 @@ def main():
     temp.replace(HISTORY)
     with CSV.open("w", encoding="utf-8-sig", newline="") as fp:
         writer = csv.writer(fp)
-        writer.writerow(["확인시각(KST)"] + [x["name"] for x in ITEMS] + ["합계", "상태", "오류"])
+        writer.writerow(["확인시각(KST)"] + [x["name"] for x in ITEMS] + ["합계", "집계 기준", "상태", "오류"])
         for r in obj["records"]:
             counts = r["counts"]
             nums = [counts.get(x["id"]) for x in ITEMS]
-            total = sum(nums) if all(isinstance(v, int) for v in nums) else ""
-            writer.writerow([r["timestamp"], *nums, total, r["status"], " / ".join(r.get("errors", []))])
+            valid_old = all(isinstance(v, int) for v in nums[:4])
+            count = sum(isinstance(v, int) for v in nums)
+            basis = count if r["status"] == "ok" and valid_old and count in (4, 5) else 0
+            total = sum(v for v in nums if isinstance(v, int)) if basis else ""
+            writer.writerow([r["timestamp"], *nums, total, f"{basis}개" if basis else "",
+                             r["status"], " / ".join(r.get("errors", []))])
     print(record["timestamp"], record["status"], record["counts"], errors, flush=True)
     return 0 if record["status"] == "ok" else 1
 
