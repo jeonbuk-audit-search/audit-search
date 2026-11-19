@@ -105,9 +105,9 @@ main{max-width:1150px;padding:28px 16px 72px;margin:auto}.eyebrow{color:#87eabb;
       <tbody id="dailyTable"></tbody></table>
     </div>
   </details>
-  <p class="daily-foot">* 각 날짜에 마지막으로 확인된 누적 조회수를 사용합니다. 전날과 당일 기록을 비교한 증가량으로, 하루의 정확한 0시~24시 조회수를 뜻하지는 않습니다. 오늘은 진행 중인 수치이며, 수집이 없던 날은 ‘기록 없음’으로 표시합니다.</p>
+  <p class="daily-foot">* 날짜별 마지막 확인값을 사용합니다. 법령ON 추가 이전 기록은 4개 기준이며, 이후 5개 합계와 직접 비교하지 않습니다. 일별 증가량은 하루의 정확한 0시~24시 조회수를 뜻하지 않습니다. 오늘은 진행 중인 수치이며, 수집이 없던 날은 ‘기록 없음’으로 표시합니다.</p>
 </section>
-<section class="panel"><h2>시간별 조회수 증가 추이</h2><small>첫 확인값 대비 증가량입니다. 실제 확인한 시점만 연결합니다.</small><canvas id="chart"></canvas><div class="legend" id="legend"></div><small id="chartinfo">확인된 자동 수집 기록이 2회 이상 쌓이면 표시됩니다.</small></section>
+<section class="panel"><h2>시간별 조회수 증가 추이</h2><small>각 프로그램의 첫 수집값 대비 증가량입니다. 법령ON은 최초 5개 집계 시점부터 표시합니다.</small><canvas id="chart"></canvas><div class="legend" id="legend"></div><small id="chartinfo">확인된 자동 수집 기록이 2회 이상 쌓이면 표시됩니다.</small></section>
 <section class="panel"><h2>30분 단위 조회 현황</h2><small>00~29분과 30~59분 구간으로 묶었습니다. 확인하지 않은 구간에는 숫자를 넣지 않습니다.</small><div id="slotboard" class="slotboard" aria-live="polite"></div><details class="rawdetails"><summary>전체 원본 수집 기록 펼쳐보기</summary><div class="tablewrap"><table><thead><tr><th>확인 시간(KST)</th><th>학교회계</th><th>감사ON</th><th>계약실무</th><th>AI 공작소</th><th>법령ON</th><th>합계</th><th>집계 기준</th><th>상태</th></tr></thead><tbody id="history"><tr><td colspan="9">기록을 불러오는 중…</td></tr></tbody></table></div></details></section>
 <footer id="errmsg"></footer><footer>자료 출처: 전북특별자치도교육청 「교직원 제작 도구」 게시판 목록의 조회수. 방문자 수·다운로드 수와 다릅니다. 자동 수집에 실패한 경우 마지막 성공값을 새로운 조회수로 기록하지 않습니다. GitHub Actions 예약 실행은 실제 시각이 지연될 수 있습니다.</footer>
 </main><script>
@@ -400,7 +400,40 @@ function renderSlots(records){
  $('slotboard').innerHTML=cards.join('');
 }
 
-function draw(good){let cv=$('chart'),ctx=cv.getContext('2d'),w=cv.clientWidth||700,h=cv.clientHeight||270,ratio=devicePixelRatio||1;cv.width=w*ratio;cv.height=h*ratio;ctx.setTransform(ratio,0,0,ratio,0,0);ctx.clearRect(0,0,w,h);$('legend').innerHTML=COLORS.map((c,i)=>'<span style="color:'+c+'">● '+NAMES[i]+'</span>').join('');if(good.length<2){$('chartinfo').textContent='자동 수집 기록 2회 이상부터 추이가 나타납니다.';return}$('chartinfo').textContent='자동 수집 이력 '+good.length+'회 기준';let pts=good.slice(-200),base=pts[0].counts,v=pts.flatMap(x=>IDs.map(id=>x.counts[id]-base[id])),low=Math.min(0,...v),high=Math.max(0,...v),pad=Math.max(1,(high-low)*.13);low=Math.min(0,low-pad);high=Math.max(1,high+pad);let l=45,r=12,t=15,b=30,pw=w-l-r,ph=h-t-b;for(let k=0;k<5;k++){let y=t+ph*k/4;ctx.strokeStyle='#36566b';ctx.beginPath();ctx.moveTo(l,y);ctx.lineTo(w-r,y);ctx.stroke();ctx.fillStyle='#a7c0cc';ctx.font='11px sans-serif';ctx.fillText(fmt(Math.round(high-(high-low)*k/4)),2,y+4)}IDs.forEach((id,i)=>{ctx.beginPath();ctx.strokeStyle=COLORS[i];ctx.lineWidth=2.5;pts.forEach((x,j)=>{let xx=l+pw*j/(pts.length-1),yy=t+ph*(1-(x.counts[id]-base[id]-low)/(high-low));if(j===0)ctx.moveTo(xx,yy);else ctx.lineTo(xx,yy)});ctx.stroke()});ctx.fillStyle='#9db9c8';ctx.font='11px sans-serif';ctx.textAlign='left';ctx.fillText(new Date(pts[0].timestamp).toLocaleTimeString('ko-KR',{timeZone:'Asia/Seoul',hour:'2-digit',minute:'2-digit',hour12:false}),l,h-7);ctx.textAlign='right';ctx.fillText(new Date(pts.at(-1).timestamp).toLocaleTimeString('ko-KR',{timeZone:'Asia/Seoul',hour:'2-digit',minute:'2-digit',hour12:false}),w-r,h-7)}
+function draw(good){
+ const cv=$('chart'),ctx=cv.getContext('2d'),w=cv.clientWidth||700,h=cv.clientHeight||270,ratio=window.devicePixelRatio||1;
+ cv.width=w*ratio;cv.height=h*ratio;ctx.setTransform(ratio,0,0,ratio,0,0);ctx.clearRect(0,0,w,h);
+ $('legend').innerHTML=COLORS.map((c,i)=>'<span style="color:'+c+'">● '+NAMES[i]+'</span>').join('');
+ if(good.length<2){$('chartinfo').textContent='수집 기록이 2회 이상 쌓이면 표시됩니다.';return}
+ $('chartinfo').textContent='각 프로그램의 최초 수집값 대비 증가량입니다. 법령ON은 첫 5개 집계 시점부터 표시합니다.';
+ const pts=good.slice(-200),bases={};
+ for(const id of IDs){const first=pts.find(x=>Number.isInteger(x.counts?.[id]));bases[id]=first?first.counts[id]:null}
+ const v=pts.flatMap(x=>IDs.map(id=>Number.isInteger(x.counts?.[id])&&bases[id]!==null?x.counts[id]-bases[id]:null)).filter(Number.isFinite);
+ const low=Math.min(0,...v),high=Math.max(1,...v),pad=Math.max(2,(high-low)*0.13);
+ const ymin=Math.min(0,low-pad),ymax=high+pad;
+ const l=45,r=12,t=15,b=30,pw=w-l-r,ph=h-t-b;
+ for(let k=0;k<5;k++){
+  const y=t+ph*k/4;
+  ctx.strokeStyle='#36566b';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(l,y);ctx.lineTo(w-r,y);ctx.stroke();
+  ctx.fillStyle='#a7c0cc';ctx.textAlign='left';ctx.font='11px sans-serif';
+  ctx.fillText(fmt(Math.round(ymax-(ymax-ymin)*k/4)),2,y+4);
+ }
+ IDs.forEach((id,i)=>{
+  ctx.beginPath();ctx.strokeStyle=COLORS[i];ctx.lineWidth=2.5;
+  let begun=false;
+  pts.forEach((x,j)=>{
+    const value=x.counts?.[id];
+    if(!Number.isInteger(value)||bases[id]===null){begun=false;return}
+    const xx=l+pw*j/(pts.length-1),yy=t+ph*(1-(value-bases[id]-ymin)/(ymax-ymin));
+    if(!begun){ctx.moveTo(xx,yy);begun=true}else ctx.lineTo(xx,yy);
+  });
+  ctx.stroke();
+ });
+ ctx.fillStyle='#9db9c8';ctx.font='11px sans-serif';ctx.textAlign='left';
+ ctx.fillText(new Date(pts[0].timestamp).toLocaleTimeString('ko-KR',{timeZone:'Asia/Seoul',hour:'2-digit',minute:'2-digit',hour12:false}),l,h-7);
+ ctx.textAlign='right';ctx.fillText(new Date(pts.at(-1).timestamp).toLocaleTimeString('ko-KR',{timeZone:'Asia/Seoul',hour:'2-digit',minute:'2-digit',hour12:false}),w-r,h-7);
+}
+
 load();
 setInterval(load,60000);
 window.addEventListener('resize',()=>render());
