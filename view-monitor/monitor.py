@@ -18,7 +18,8 @@ ITEMS = [
     {"id":"1200294","name":"학교회계 운영지침·감사사례"},
     {"id":"1204144","name":"감사ON"},
     {"id":"1210880","name":"계약실무 길잡이"},
-    {"id":"1212154","name":"늙크크 AI 공작소"}
+    {"id":"1212154","name":"늙크크 AI 공작소"},
+    {"id":"1214606","name":"법령ON"}
 ]
 ROOT = Path(__file__).resolve().parent
 HISTORY = ROOT / "data" / "history.json"
@@ -99,7 +100,8 @@ def main():
                 if at.tzinfo is None:
                     at = at.replace(tzinfo=timezone(timedelta(hours=9)))
                 elapsed = (now - at.astimezone(timezone.utc)).total_seconds()
-                if 0 <= elapsed < 25 * 60:
+                # New programs must be observed before rate-limiting collection.
+                if all(isinstance(prior.get("counts", {}).get(k), int) for k in IDS) and 0 <= elapsed < 25 * 60:
                     print("Recent successful observation", round(elapsed / 60, 1),
                           "minutes ago; scheduled retry skipped.", flush=True)
                     return 0
@@ -109,7 +111,7 @@ def main():
     values = {}
     errors = []
     for page in (1, 2, 3):
-        if len(values) == 4:
+        if len(values) == len(ITEMS):
             break
         try:
             p = Rows()
@@ -117,7 +119,7 @@ def main():
             values.update({x["id"]:x["views"] for x in p.rows})
         except Exception as exc:
             errors.append(str(exc))
-        if page < 3 and len(values) < 4:
+        if page < 3 and len(values) < len(ITEMS):
             time.sleep(1.2)
     missing = IDS - values.keys()
     if missing:
