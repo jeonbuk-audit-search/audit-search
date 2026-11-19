@@ -1,7 +1,7 @@
 {
   "name": "큰그릇실장 조회수 LIVE",
   "short_name": "조회수 LIVE",
-  "description": "학교회계·감사ON·계약실무·늙크크 AI 공작소 조회수와 30분별 기록을 확인하는 모바일 웹앱",
+  "description": "학교회계·감사ON·계약실무·늙크크 AI 공작소·법령ON 총 5개 도구의 조회수, 30분별 기록, 일별 누적을 확인하는 웹앱",
   "id": "./",
   "start_url": "./?utm_source=home_screen",
   "scope": "./",
