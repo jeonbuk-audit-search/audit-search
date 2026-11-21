@@ -1124,6 +1124,19 @@
       "status": "ok",
       "source": "schedule",
       "errors": []
+    },
+    {
+      "timestamp": "2026-11-22T06:03:45+09:00",
+      "counts": {
+        "1200294": 966,
+        "1204144": 829,
+        "1210880": 817,
+        "1212154": 469,
+        "1214606": 205
+      },
+      "status": "ok",
+      "source": "schedule",
+      "errors": []
     }
   ],
   "baseline": {
