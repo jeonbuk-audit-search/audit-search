@@ -1176,6 +1176,19 @@
       "status": "ok",
       "source": "workflow_dispatch",
       "errors": []
+    },
+    {
+      "timestamp": "2026-11-22T16:57:21+09:00",
+      "counts": {
+        "1200294": 967,
+        "1204144": 829,
+        "1210880": 818,
+        "1212154": 470,
+        "1214606": 209
+      },
+      "status": "ok",
+      "source": "schedule",
+      "errors": []
     }
   ],
   "baseline": {
