@@ -1410,6 +1410,19 @@
       "status": "ok",
       "source": "schedule",
       "errors": []
+    },
+    {
+      "timestamp": "2026-11-26T11:45:11+09:00",
+      "counts": {
+        "1200294": 1000,
+        "1204144": 877,
+        "1210880": 883,
+        "1212154": 537,
+        "1214606": 253
+      },
+      "status": "ok",
+      "source": "schedule",
+      "errors": []
     }
   ],
   "baseline": {
