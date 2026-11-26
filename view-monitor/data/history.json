@@ -1423,6 +1423,19 @@
       "status": "ok",
       "source": "schedule",
       "errors": []
+    },
+    {
+      "timestamp": "2026-11-26T20:33:42+09:00",
+      "counts": {
+        "1200294": 1005,
+        "1204144": 883,
+        "1210880": 889,
+        "1212154": 541,
+        "1214606": 257
+      },
+      "status": "ok",
+      "source": "schedule",
+      "errors": []
     }
   ],
   "baseline": {
